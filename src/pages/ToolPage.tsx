@@ -81,10 +81,24 @@ export function ToolPage() {
             <span className="nav-brand">Toolsx</span>
           </Link>
           <span className="nav-sep">/</span>
-          <span className="nav-tool-name">{tool.name}</span>
+          <div className="nav-title-group">
+            <span className="nav-tool-name">{tool.name}</span>
+            {tool.description && (
+              <span className="nav-tool-desc" title={tool.description}>
+                {tool.description}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="nav-right">
+          {tool.tags && tool.tags.length > 0 && (
+            <div className="nav-tags-inline">
+              {tool.tags.slice(0, 2).map((t) => (
+                <span key={t} className="nav-tag-inline">#{t}</span>
+              ))}
+            </div>
+          )}
           <span className="nav-badge" data-type={tool.type}>
             {tool.type === "react" ? "React" : "HTML"}
           </span>
@@ -130,20 +144,6 @@ export function ToolPage() {
         </div>
       </nav>
 
-      {/* Tool description bar */}
-      {(tool.description || (tool.tags && tool.tags.length > 0)) && (
-        <div className="toolpage-desc-bar">
-          {tool.description && <p className="toolpage-desc">{tool.description}</p>}
-          {tool.tags && tool.tags.length > 0 && (
-            <div className="toolpage-tags">
-              {tool.tags.map((t) => (
-                <span key={t} className="toolpage-tag">#{t}</span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Tool render area */}
       <div className="toolpage-viewer">
         <ToolViewer tool={tool} />
@@ -160,7 +160,7 @@ export function ToolPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 12px 20px;
+          padding: 8px 20px;
           border-bottom: 1px solid var(--border);
           background: var(--surface);
           position: sticky;
@@ -174,6 +174,7 @@ export function ToolPage() {
           display: flex;
           align-items: center;
           gap: 10px;
+          min-width: 0;
         }
         .nav-back {
           display: flex;
@@ -182,6 +183,7 @@ export function ToolPage() {
           color: var(--muted);
           font-size: 0.85rem;
           transition: color 0.15s;
+          flex-shrink: 0;
         }
         .nav-back:hover { color: var(--primary); }
         .nav-brand {
@@ -190,7 +192,13 @@ export function ToolPage() {
           font-size: 0.9rem;
           color: var(--primary);
         }
-        .nav-sep { color: var(--border-2); }
+        .nav-sep { color: var(--border-2); flex-shrink: 0; }
+        .nav-title-group {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+          min-width: 0;
+        }
         .nav-tool-name {
           font-size: 0.9rem;
           font-weight: 600;
@@ -198,7 +206,27 @@ export function ToolPage() {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          max-width: 200px;
+          max-width: 220px;
+          line-height: 1.2;
+        }
+        .nav-tool-desc {
+          font-size: 0.72rem;
+          color: var(--muted);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 380px;
+          line-height: 1.2;
+        }
+        .nav-tags-inline {
+          display: flex;
+          gap: 6px;
+          margin-right: 4px;
+        }
+        .nav-tag-inline {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 0.65rem;
+          color: var(--muted);
         }
         .nav-right {
           display: flex;
@@ -249,27 +277,6 @@ export function ToolPage() {
           font-size: 0.95rem;
           flex-shrink: 0;
         }
-        .toolpage-desc-bar {
-          padding: 10px 20px;
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          border-bottom: 1px solid var(--border);
-          flex-wrap: wrap;
-          flex-shrink: 0;
-        }
-        .toolpage-desc {
-          font-size: 0.82rem;
-          color: var(--muted);
-          margin: 0;
-          flex: 1;
-        }
-        .toolpage-tags { display: flex; gap: 8px; }
-        .toolpage-tag {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 0.65rem;
-          color: var(--border-2);
-        }
         .toolpage-viewer {
           flex: 1;
           min-height: 0;
@@ -279,6 +286,14 @@ export function ToolPage() {
         }
 
         /* ── Responsive & Mobile Adjustments ── */
+        @media (max-width: 768px) {
+          .nav-tags-inline {
+            display: none;
+          }
+          .nav-tool-desc {
+            max-width: 200px;
+          }
+        }
         @media (max-width: 640px) {
           .toolpage-nav {
             padding: 8px 12px;
@@ -286,6 +301,10 @@ export function ToolPage() {
           }
           .nav-tool-name {
             max-width: 100px;
+          }
+          .nav-tool-desc {
+            max-width: 120px;
+            font-size: 0.68rem;
           }
           .nav-badge[data-cat] {
             display: none;
@@ -295,16 +314,6 @@ export function ToolPage() {
           }
           .nav-btn-text {
             display: none;
-          }
-          .toolpage-desc-bar {
-            padding: 8px 12px;
-            gap: 8px;
-          }
-          .toolpage-desc {
-            font-size: 0.78rem;
-          }
-          .toolpage-tags {
-            width: 100%;
           }
         }
       `}</style>
