@@ -2,11 +2,13 @@ import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import { useAutoTools } from "../hooks/useAutoTools";
 import { ToolViewer } from "../components/ToolViewer";
+import { useTheme } from "../hooks/useTheme";
 
 export function ToolPage() {
   const { id } = useParams<{ id: string }>();
   const { allTools } = useAutoTools();
   const [fullscreen, setFullscreen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const tool = allTools.find((t) => t.id === id);
 
@@ -115,6 +117,15 @@ export function ToolPage() {
             title="Open in fullscreen"
           >
             ⤢ Fullscreen
+          </button>
+          {/* Theme Toggle */}
+          <button
+            className="nav-btn theme-toggle-btn"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? "☀️" : "🌙"}
           </button>
         </div>
       </nav>
@@ -227,6 +238,14 @@ export function ToolPage() {
           background: oklch(0.65 0.15 145 / 0.20);
           border-color: var(--primary);
           color: var(--primary);
+        }
+        .theme-toggle-btn {
+          width: 30px;
+          height: 30px;
+          padding: 0;
+          justify-content: center;
+          font-size: 0.95rem;
+          flex-shrink: 0;
         }
         .toolpage-desc-bar {
           padding: 10px 20px;

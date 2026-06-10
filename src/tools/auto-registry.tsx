@@ -22,7 +22,9 @@ export const tools: EnrichedTool[] = [
       "json",
       "format",
       "validate"
-    ]
+    ],
+    "filePath": "react/json-formatter/index.tsx",
+    "date": 1781117480014.8323
   },
   {
     "id": "word-counter",
@@ -35,7 +37,9 @@ export const tools: EnrichedTool[] = [
       "text",
       "words",
       "reading"
-    ]
+    ],
+    "filePath": "react/word-counter/index.tsx",
+    "date": 1781117494223.3523
   },
   {
     "id": "gradient-maker",
@@ -48,7 +52,9 @@ export const tools: EnrichedTool[] = [
       "css",
       "gradient",
       "color"
-    ]
+    ],
+    "filePath": "html/gradient-maker/index.html",
+    "date": 1781117579366.2617
   },
   {
     "id": "base64",
@@ -61,7 +67,9 @@ export const tools: EnrichedTool[] = [
       "encode",
       "decode",
       "base64"
-    ]
+    ],
+    "filePath": "react/base64/index.tsx",
+    "date": 1781117519776.1885
   },
   {
     "id": "color-picker",
@@ -74,7 +82,9 @@ export const tools: EnrichedTool[] = [
       "color",
       "hex",
       "oklch"
-    ]
+    ],
+    "filePath": "html/color-picker/index.html",
+    "date": 1781117615555.541
   },
   {
     "id": "markdown-preview",
@@ -87,7 +97,9 @@ export const tools: EnrichedTool[] = [
       "markdown",
       "preview",
       "md"
-    ]
+    ],
+    "filePath": "react/markdown-preview/index.tsx",
+    "date": 1781117547433.1296
   },
   {
     "id": "pelangan-wifi",
@@ -101,7 +113,8 @@ export const tools: EnrichedTool[] = [
       "pelangan-wifi"
     ],
     "autoDetected": true,
-    "filePath": "html/pelangan-wifi/index.html"
+    "filePath": "html/pelangan-wifi/index.html",
+    "date": 1781119020969.1487
   },
   {
     "id": "javasandi",
@@ -115,7 +128,8 @@ export const tools: EnrichedTool[] = [
       "javasandi"
     ],
     "autoDetected": true,
-    "filePath": "html/javasandi.html"
+    "filePath": "html/javasandi.html",
+    "date": 1781118326188.6184
   },
   {
     "id": "javascript",
@@ -129,7 +143,8 @@ export const tools: EnrichedTool[] = [
       "javascript"
     ],
     "autoDetected": true,
-    "filePath": "html/javascript/index.html"
+    "filePath": "html/javascript/index.html",
+    "date": 1781118450889.0264
   },
   {
     "id": "paste_image",
@@ -143,7 +158,8 @@ export const tools: EnrichedTool[] = [
       "paste_image"
     ],
     "autoDetected": true,
-    "filePath": "react/paste_image.tsx"
+    "filePath": "react/paste_image.tsx",
+    "date": 1781119243369.0012
   },
   {
     "id": "Pelangan-wifi",
@@ -157,7 +173,8 @@ export const tools: EnrichedTool[] = [
       "Pelangan-wifi"
     ],
     "autoDetected": true,
-    "filePath": "react/Pelangan-wifi.tsx"
+    "filePath": "react/Pelangan-wifi.tsx",
+    "date": 1781119165710.2588
   }
 ];
 

@@ -83,7 +83,7 @@ function scanTools() {
 function generateAutoRegistry() {
   const scanned = scanTools();
   const registeredIds = new Set(registeredTools.map((t) => t.id));
-  const allTools: any[] = [...registeredTools];
+  const allTools: any[] = [];
 
   function toTitle(id: string) {
     return id
@@ -103,18 +103,34 @@ function generateAutoRegistry() {
 
   const reactComponentsLines: string[] = [];
 
-  // Add registered React tools
+  // Add registered tools with date stats
   for (const t of registeredTools) {
+    const match = scanned.find((s) => s.id === t.id && s.type === t.type);
+    const fp = match ? match.filePath : (t.type === "html" ? `html/${t.id}/index.html` : `react/${t.id}/index.tsx`);
+    let mtime = Date.now();
+    try {
+      mtime = statSync(join(TOOLS_DIR, fp)).mtimeMs;
+    } catch {}
+
+    allTools.push({
+      ...t,
+      filePath: fp,
+      date: mtime
+    });
+
     if (t.type === "react") {
-      const match = scanned.find((s) => s.id === t.id && s.type === "react");
-      const fp = match ? match.filePath : `react/${t.id}/index.tsx`;
       reactComponentsLines.push(`  "${t.path}": lazy(() => import("./${fp}")),`);
     }
   }
 
-  // Add auto-detected React and HTML tools
+  // Add auto-detected React and HTML tools with date stats
   for (const entry of scanned) {
     if (registeredIds.has(entry.id)) continue;
+
+    let mtime = Date.now();
+    try {
+      mtime = statSync(join(TOOLS_DIR, entry.filePath)).mtimeMs;
+    } catch {}
 
     const inferred = {
       id: entry.id,
@@ -126,6 +142,7 @@ function generateAutoRegistry() {
       tags: [entry.type, entry.id],
       autoDetected: true,
       filePath: entry.filePath,
+      date: mtime,
     };
     allTools.push(inferred);
 

@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ── Toolsx Design Tokens ── */
-:root {
+:root, html[data-theme="dark"] {
   --bg:        oklch(0.10 0.000 0);
   --surface:   oklch(0.14 0.005 145);
   --surface-2: oklch(0.18 0.005 145);
@@ -31,11 +31,29 @@
   --z-tooltip:  600;
 }
 
+html[data-theme="light"] {
+  --bg:        oklch(0.98 0.000 0);
+  --surface:   oklch(0.95 0.005 145);
+  --surface-2: oklch(0.91 0.005 145);
+  --border:    oklch(0.86 0.005 145);
+  --border-2:  oklch(0.79 0.006 145);
+  --primary:   oklch(0.55 0.13 145);
+  --primary-hi: oklch(0.48 0.12 145);
+  --accent:    oklch(0.60 0.15 55);
+  --ink:       oklch(0.12 0.005 145);
+  --ink-2:     oklch(0.25 0.008 145);
+  --muted:     oklch(0.48 0.008 145);
+  --danger:    oklch(0.50 0.18 25);
+}
+
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; }
 
 html {
   color-scheme: dark;
+}
+html[data-theme="light"] {
+  color-scheme: light;
 }
 
 body {

@@ -10,22 +10,13 @@ const CATEGORY_COLORS: Record<string, string> = {
   Fun:       "oklch(0.65 0.18 330)",
 };
 
-const CATEGORY_BG: Record<string, string> = {
-  Developer: "oklch(0.18 0.04 145)",
-  Utility:   "oklch(0.18 0.05 55)",
-  Design:    "oklch(0.18 0.04 220)",
-  Text:      "oklch(0.18 0.04 290)",
-  Math:      "oklch(0.18 0.04 30)",
-  Fun:       "oklch(0.18 0.05 330)",
-};
-
 interface ToolCardProps {
   tool: EnrichedTool;
 }
 
 export function ToolCard({ tool }: ToolCardProps) {
   const catColor = CATEGORY_COLORS[tool.category] ?? "oklch(0.65 0.12 200)";
-  const catBg    = CATEGORY_BG[tool.category]    ?? "oklch(0.18 0.04 200)";
+  const catBg    = `oklch(from ${catColor} l c h / 0.12)`;
 
   /** URL untuk open in new tab — HTML: langsung ke file, React: ke /tool/:id */
   const newTabUrl = tool.type === "html"
@@ -43,10 +34,10 @@ export function ToolCard({ tool }: ToolCardProps) {
       <div className="tool-card-inner">
         {/* Header badges */}
         <div className="tool-card-top">
-          <span className="tool-type-badge" style={{ background: catBg, color: catColor }}>
+          <span className="tool-type-badge" style={{ background: catBg, color: "var(--cat)" }}>
             {tool.type === "react" ? "TSX" : "HTML"}
           </span>
-          <span className="tool-cat-badge" style={{ background: catBg, color: catColor }}>
+          <span className="tool-cat-badge" style={{ background: catBg, color: "var(--cat)" }}>
             {tool.category}
           </span>
           {tool.autoDetected && (
