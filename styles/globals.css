@@ -32,18 +32,18 @@
 }
 
 html[data-theme="light"] {
-  --bg:        oklch(0.99 0.002 145);    /* Soft warm white with hint of green, reduces glare */
-  --surface:   oklch(0.96 0.003 145);    /* Clean soft card panels */
-  --surface-2: oklch(0.92 0.005 145);    /* Hover states for interactive surfaces */
-  --border:    oklch(0.88 0.006 145);    /* Subtle delimiters */
-  --border-2:  oklch(0.80 0.008 145);    /* Clear borders and active lines */
-  --primary:   oklch(0.44 0.11 145);     /* Deep forest green for links/primary text, safe contrast */
-  --primary-hi: oklch(0.38 0.10 145);    /* Hover deep green */
-  --accent:    oklch(0.52 0.13 55);      /* Rich dark amber for HTML label differentiation */
-  --ink:       oklch(0.18 0.010 145);    /* Dark charcoal body text, excellent readability */
-  --ink-2:     oklch(0.28 0.012 145);    /* Secondary section headers */
-  --muted:     oklch(0.42 0.010 145);    /* Captions/tags, hits 4.5:1+ contrast on body */
-  --danger:    oklch(0.52 0.16 25);      /* Muted red for errors */
+  --bg:        oklch(0.975 0.006 150);
+  --surface:   oklch(0.995 0.004 150);
+  --surface-2: oklch(0.938 0.012 150);
+  --border:    oklch(0.835 0.014 150);
+  --border-2:  oklch(0.705 0.018 150);
+  --primary:   oklch(0.405 0.130 145);
+  --primary-hi: oklch(0.355 0.125 145);
+  --accent:    oklch(0.500 0.135 55);
+  --ink:       oklch(0.165 0.014 150);
+  --ink-2:     oklch(0.285 0.016 150);
+  --muted:     oklch(0.430 0.014 150);
+  --danger:    oklch(0.500 0.165 25);
 }
 
 /* ── Reset & Base ── */
@@ -65,6 +65,12 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
+}
+
+html[data-theme="light"] body {
+  background:
+    linear-gradient(180deg, oklch(0.995 0.004 150) 0, var(--bg) 300px),
+    var(--bg);
 }
 
 a { color: inherit; text-decoration: none; }
@@ -395,6 +401,21 @@ button.scan-badge {
   color: var(--accent);
 }
 
+.filter-chip-pin,
+.filter-chip-bookmark {
+  border-color: oklch(from var(--primary) l c h / 0.32);
+  background: oklch(from var(--primary) l c h / 0.06);
+}
+
+.filter-chip-pin:hover,
+.filter-chip-pin.active,
+.filter-chip-bookmark:hover,
+.filter-chip-bookmark.active {
+  background: oklch(from var(--primary) l c h / 0.14);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .scan-error {
   display: flex;
   align-items: center;
@@ -517,6 +538,11 @@ button.scan-badge {
   opacity: 1;
 }
 
+.tool-card.is-pinned {
+  border-color: oklch(from var(--primary) l c h / 0.48);
+  background: color-mix(in oklch, var(--surface) 86%, var(--primary) 14%);
+}
+
 .tool-card-inner {
   position: relative;
   min-height: inherit;
@@ -535,7 +561,8 @@ button.scan-badge {
 
 .tool-type-badge,
 .tool-cat-badge,
-.tool-new-badge {
+.tool-new-badge,
+.tool-pin-badge {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
   font-size: 0.65rem;
   font-weight: 600;
@@ -544,14 +571,27 @@ button.scan-badge {
   border-radius: 4px;
 }
 
+.tool-pin-badge {
+  background: oklch(from var(--primary) l c h / 0.12);
+  color: var(--primary);
+  border: 1px solid oklch(from var(--primary) l c h / 0.32);
+}
+
 .tool-new-badge {
   background: oklch(from var(--accent) l c h / 0.12);
   color: var(--accent);
   border: 1px solid oklch(from var(--accent) l c h / 0.35);
 }
 
-.tool-newtab-btn {
+.tool-card-actions {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.tool-action-btn {
   width: 28px;
   height: 28px;
   display: inline-flex;
@@ -566,15 +606,37 @@ button.scan-badge {
   transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
 
-.tool-newtab-btn:hover {
+.tool-action-btn:hover {
   background: var(--surface);
   border-color: var(--border-2);
   color: var(--ink);
 }
 
-.tool-card:hover .tool-newtab-btn,
-.tool-card:focus-within .tool-newtab-btn {
+.tool-action-btn.active {
+  background: oklch(from var(--primary) l c h / 0.12);
+  border-color: oklch(from var(--primary) l c h / 0.34);
+  color: var(--primary);
+}
+
+.tool-action-btn.pin-active {
+  color: var(--accent);
+  background: oklch(from var(--accent) l c h / 0.12);
+  border-color: oklch(from var(--accent) l c h / 0.32);
+}
+
+.tool-card:hover .tool-action-btn,
+.tool-card:focus-within .tool-action-btn {
   color: var(--ink-2);
+}
+
+.tool-card:hover .tool-action-btn.active,
+.tool-card:focus-within .tool-action-btn.active {
+  color: var(--primary);
+}
+
+.tool-card:hover .tool-action-btn.pin-active,
+.tool-card:focus-within .tool-action-btn.pin-active {
+  color: var(--accent);
 }
 
 .tool-card-link {
@@ -940,6 +1002,146 @@ button.scan-badge {
 @keyframes loading-scan {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
+}
+
+/* ── Light theme polish ── */
+html[data-theme="light"] .home-shell {
+  color: var(--ink);
+}
+
+html[data-theme="light"] .logo-mark {
+  color: var(--primary);
+  filter: drop-shadow(0 0 8px oklch(from var(--primary) l c h / 0.22));
+}
+
+html[data-theme="light"] .home-tagline,
+html[data-theme="light"] .results-count,
+html[data-theme="light"] .tool-card-desc,
+html[data-theme="light"] .tool-tag,
+html[data-theme="light"] .nav-tool-desc,
+html[data-theme="light"] .nav-tag-inline {
+  color: var(--muted);
+}
+
+html[data-theme="light"] .icon-btn,
+html[data-theme="light"] .search-input,
+html[data-theme="light"] .filter-chip,
+html[data-theme="light"] .empty-action,
+html[data-theme="light"] .nav-btn,
+html[data-theme="light"] .fullscreen-exit {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+html[data-theme="light"] .icon-btn:hover,
+html[data-theme="light"] .empty-action:hover,
+html[data-theme="light"] .nav-btn:hover,
+html[data-theme="light"] .fullscreen-exit:hover {
+  background: var(--surface-2);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+html[data-theme="light"] .search-input {
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.82);
+}
+
+html[data-theme="light"] .search-input:focus {
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.82),
+    0 0 0 3px oklch(from var(--primary) l c h / 0.16);
+}
+
+html[data-theme="light"] .type-filters,
+html[data-theme="light"] .sort-wrap {
+  background: oklch(0.945 0.010 150);
+  border-color: var(--border);
+}
+
+html[data-theme="light"] .type-filter-btn.active {
+  background: var(--surface);
+  color: var(--primary);
+}
+
+html[data-theme="light"] .sort-select option {
+  background: var(--surface);
+}
+
+html[data-theme="light"] .scan-badge.scanning {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--ink-2);
+}
+
+html[data-theme="light"] .scan-badge.has-new,
+html[data-theme="light"] .filter-chip-new {
+  background: oklch(from var(--accent) l c h / 0.10);
+  border-color: oklch(from var(--accent) l c h / 0.30);
+  color: var(--accent);
+}
+
+html[data-theme="light"] .filter-chip.active,
+html[data-theme="light"] .filter-chip-pin.active,
+html[data-theme="light"] .filter-chip-bookmark.active {
+  background: oklch(from var(--primary) l c h / 0.13);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+html[data-theme="light"] .tool-card {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 2px 8px oklch(0.32 0.025 150 / 0.08);
+}
+
+html[data-theme="light"] .tool-card::before {
+  background: radial-gradient(ellipse at top left, oklch(from var(--cat) l c h / 0.10), transparent 58%);
+}
+
+html[data-theme="light"] .tool-card:hover,
+html[data-theme="light"] .tool-card:focus-within {
+  background: oklch(0.985 0.006 150);
+  border-color: var(--cat);
+  box-shadow: 0 4px 8px oklch(0.32 0.025 150 / 0.11);
+}
+
+html[data-theme="light"] .tool-card.is-pinned {
+  background: color-mix(in oklch, var(--surface) 84%, var(--primary) 16%);
+  border-color: oklch(from var(--primary) l c h / 0.46);
+}
+
+html[data-theme="light"] .tool-card-name,
+html[data-theme="light"] .nav-tool-name,
+html[data-theme="light"] .empty-title {
+  color: var(--ink);
+}
+
+html[data-theme="light"] .tool-action-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--border-2);
+  color: var(--ink);
+}
+
+html[data-theme="light"] .tool-action-btn.active {
+  background: oklch(from var(--primary) l c h / 0.12);
+  border-color: oklch(from var(--primary) l c h / 0.34);
+  color: var(--primary);
+}
+
+html[data-theme="light"] .tool-action-btn.pin-active {
+  background: oklch(from var(--accent) l c h / 0.12);
+  border-color: oklch(from var(--accent) l c h / 0.34);
+  color: var(--accent);
+}
+
+html[data-theme="light"] .toolpage-nav {
+  background: oklch(0.985 0.006 150 / 0.96);
+  border-bottom-color: var(--border);
+}
+
+html[data-theme="light"] .tool-viewer,
+html[data-theme="light"] .html-tool-frame {
+  background: var(--bg);
 }
 
 @media (max-width: 768px) {

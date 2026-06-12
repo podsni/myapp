@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-font="sans">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="A minimalist Markdown editor that lives in your browser. The editing surface itself renders Markdown — no preview pane. Notes are stored locally (IndexedDB) and shareable via the URL.">
+<meta name="color-scheme" content="light dark">
+<title>Textarea</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-2: #f6f6f7; --fg: #161616; --muted: #8a8a90;
+    --faint: #ececef; --line: #e6e6ea; --link: #0066cc; --accent: #007aff;
+    --accent-soft: rgba(0,122,255,.12); --code-bg: #f3f3f5; --sel: rgba(0,122,255,.18);
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 28px rgba(0,0,0,.08); --sidebar-w: 264px;
+  }
+  html[data-theme="dark"] {
+    --bg: #000000; --bg-2: #0d0d0d; --fg: #ffffff; --muted: #7c7c83; --faint: #161616;
+    --line: #222226; --link: #58a6ff; --accent: #58a6ff; --accent-soft: rgba(88,166,255,.16);
+    --code-bg: #121212; --sel: rgba(88,166,255,.22);
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 32px rgba(0,0,0,.5);
+  }
+  @media (prefers-color-scheme: dark) {
+    html[data-theme="auto"] {
+      --bg:#000;--bg-2:#0d0d0d;--fg:#fff;--muted:#7c7c83;--faint:#161616;--line:#222226;
+      --link:#58a6ff;--accent:#58a6ff;--accent-soft:rgba(88,166,255,.16);--code-bg:#121212;--sel:rgba(88,166,255,.22);
+      --shadow:0 1px 2px rgba(0,0,0,.5),0 10px 32px rgba(0,0,0,.5);
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--fg); overflow: hidden; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  ::selection { background: var(--sel); }
+  a { color: var(--link); }
+
+  .app { display: flex; height: 100dvh; height: 100vh; }
+
+  /* ---------- Sidebar (notes history + CRUD) ---------- */
+  .sidebar { width: var(--sidebar-w); flex: 0 0 var(--sidebar-w); background: var(--bg-2); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; transition: margin-left .24s ease; }
+  .app[data-sidebar="closed"] .sidebar { margin-left: calc(var(--sidebar-w) * -1); }
+  .side-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 8px; padding-top: max(12px, env(safe-area-inset-top)); }
+  .side-title { font-weight: 700; font-size: 14px; letter-spacing: .2px; margin-right: auto; }
+  .side-search { padding: 0 12px 8px; }
+  .side-search input { width: 100%; height: 32px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 9px; padding: 0 10px; font: inherit; font-size: 13px; outline: none; }
+  .side-search input:focus { border-color: var(--accent); }
+  .note-list { list-style: none; padding: 4px 8px; overflow-y: auto; flex: 1; }
+  .note-item { position: relative; padding: 9px 30px 9px 11px; border-radius: 9px; cursor: pointer; margin-bottom: 2px; border: 1px solid transparent; }
+  .note-item:hover { background: var(--faint); }
+  .note-item.active { background: var(--accent-soft); }
+  .note-item .nt { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .note-item .nm { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .note-del { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 24px; height: 24px; border: 0; background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer; opacity: 0; display: grid; place-items: center; }
+  .note-item:hover .note-del, .note-item.active .note-del { opacity: 1; }
+  .note-del:hover { background: rgba(255,90,90,.16); color: #ff5a5a; }
+  .note-empty { padding: 20px 14px; color: var(--muted); font-size: 13px; text-align: center; }
+  .side-foot { display: flex; gap: 6px; padding: 8px 10px; padding-bottom: max(8px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+
+  /* ---------- Content ---------- */
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100%; }
+  .bar { display: flex; align-items: center; gap: 6px; padding: 8px 10px; padding-top: max(8px, env(safe-area-inset-top)); border-bottom: 1px solid var(--line); background: var(--bg); }
+  .doc-title { font-size: 13.5px; font-weight: 600; margin: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+  .spacer { margin-left: auto; }
+  .icon-btn, .txt-btn { appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 500; height: 32px; min-width: 32px; padding: 0 9px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; transition: background .15s, color .15s; }
+  .icon-btn:hover, .txt-btn:hover { background: var(--faint); color: var(--fg); }
+  .icon-btn svg, .txt-btn svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  #deleteBtn:hover { background: rgba(255,90,90,.16); color: #ff5a5a; }
+
+  /* ---------- Editor (single contenteditable surface, live highlight) ---------- */
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; }
+  .editor {
+    outline: none; width: 100%; min-height: 100%;
+    padding: 22px max(20px, calc(50% - 400px)) 140px;
+    font: 18px / 1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    tab-size: 4; white-space: pre-wrap; overflow-wrap: break-word; caret-color: var(--accent);
+  }
+  html[data-font="mono"] .editor { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+  html[data-font="serif"] .editor { font-family: "Iowan Old Style", Georgia, "Times New Roman", serif; }
+  .editor.is-empty::before { content: attr(data-placeholder); color: var(--muted); pointer-events: none; }
+
+  /* inline markdown styling — the surface IS the rendered view */
+  .md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6 { font-weight: 700; }
+  .md-h1 { font-size: 2em; } .md-h2 { font-size: 1.5em; } .md-h3 { font-size: 1.25em; }
+  .md-h4 { font-size: 1.1em; } .md-h5 { font-size: 1em; } .md-h6 { font-size: .9em; color: var(--muted); }
+  .md-bold { font-weight: 700; }
+  .md-italic { font-style: italic; }
+  .md-strike { text-decoration: line-through; opacity: .8; }
+  .md-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .92em; background: var(--code-bg); border: 1px solid var(--line); border-radius: 5px; padding: .04em .32em; }
+  .md-codeblock { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .92em; background: var(--code-bg); border-radius: 6px; }
+  .md-url { color: var(--link); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ---------- Status bar ---------- */
+  .status { display: flex; align-items: center; gap: 14px; padding: 7px 14px; padding-bottom: max(7px, env(safe-area-inset-bottom)); font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); user-select: none; }
+  .status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: background .2s; }
+  .status.saved .dot { background: #34c759; }
+  .status .spacer2 { margin-left: auto; }
+  .status kbd { font-family: ui-monospace, monospace; font-size: 11px; background: var(--faint); border-radius: 5px; padding: 1px 6px; }
+
+  .backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 30; }
+
+  .toast { position: fixed; left: 50%; bottom: 54px; transform: translate(-50%, 12px); background: var(--fg); color: var(--bg); font-size: 13px; font-weight: 500; padding: 9px 16px; border-radius: 10px; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 50; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  dialog { border: 0; border-radius: 16px; padding: 0; background: var(--bg); color: var(--fg); box-shadow: var(--shadow); max-width: 92vw; }
+  dialog::backdrop { background: rgba(0,0,0,.5); backdrop-filter: blur(2px); }
+  .qr-wrap { padding: 22px; text-align: center; }
+  .qr-wrap h3 { margin: 0 0 14px; font-size: 14px; font-weight: 600; }
+  #qrcanvas { background: #fff; border-radius: 10px; image-rendering: pixelated; }
+  .qr-wrap p { margin: 14px 0 0; font-size: 11.5px; color: var(--muted); max-width: 280px; }
+
+  @media (max-width: 780px) {
+    :root { --sidebar-w: 80vw; }
+    .sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: 40; max-width: 320px; box-shadow: var(--shadow); }
+    .app[data-sidebar="open"] .backdrop { display: block; }
+    .doc-title { max-width: 34vw; }
+    .editor { padding: 18px 18px 140px; font-size: 17px; }
+    .kbdhint { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div id="app" class="app" data-sidebar="open">
+    <aside class="sidebar" id="sidebar">
+      <div class="side-head">
+        <span class="side-title">Notes</span>
+        <button class="icon-btn" id="newNoteBtn" title="New note (⌘⇧N)">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+      <div class="side-search"><input id="search" type="search" placeholder="Search notes…" autocomplete="off"></div>
+      <ul class="note-list" id="noteList"></ul>
+      <div class="side-foot">
+        <button class="txt-btn" id="themeBtn" title="Cycle theme">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></svg>
+          <span id="themeLabel">Dark</span>
+        </button>
+        <button class="txt-btn" id="fontBtn" title="Cycle typeface">
+          <svg viewBox="0 0 24 24"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>
+          <span id="fontLabel">Sans</span>
+        </button>
+      </div>
+    </aside>
+    <div class="backdrop" id="backdrop"></div>
+
+    <main class="content">
+      <header class="bar">
+        <button class="icon-btn" id="sidebarToggle" title="Toggle sidebar (⌘B)">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <span class="doc-title" id="docTitle">Textarea</span>
+        <div class="spacer"></div>
+        <button class="icon-btn" id="copyBtn" title="Copy shareable link (⌘K)">
+          <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>
+        </button>
+        <button class="icon-btn" id="qrBtn" title="Show QR code">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v7M17 20h4M14 17v4"/></svg>
+        </button>
+        <button class="icon-btn" id="downloadBtn" title="Download .md (⌘S)">
+          <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        </button>
+        <button class="icon-btn" id="deleteBtn" title="Delete this note">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        </button>
+      </header>
+
+      <div class="scroll">
+        <article class="editor" id="editor" contenteditable="true" spellcheck="true" autocomplete="off" autocapitalize="sentences" data-placeholder="# Start typing…"></article>
+      </div>
+
+      <footer class="status" id="status">
+        <span class="dot"></span>
+        <span id="saveState">Saved</span>
+        <span id="counts">0 words · 0 characters</span>
+        <span class="spacer2"></span>
+        <span id="readtime"></span>
+        <span class="kbdhint"><kbd>⌘B</kbd> sidebar · <kbd>⌘K</kbd> copy · <kbd>⌘S</kbd> save</span>
+      </footer>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <dialog id="qrDialog">
+    <div class="qr-wrap">
+      <h3>Scan to open this note</h3>
+      <canvas id="qrcanvas" width="280" height="280"></canvas>
+      <p id="qrhint">Point a phone camera at the code.</p>
+      <button class="txt-btn" id="qrClose" style="margin:16px auto 0;border:1px solid var(--line)">Close</button>
+    </div>
+  </dialog>
+
+<script>
+/* Minimal, self-contained QR Code generator (byte mode).
+   Based on the public-domain QR Code generator algorithm by Project Nayuki.
+   Exposes window.QR.make(text, ecl) -> { size, get(x,y) } or null if too long. */
+(function (global) {
+  'use strict';
+
+  var ECC = { L: 0, M: 1, Q: 2, H: 3 };
+  // Format-bit values for each ECC level (L,M,Q,H -> indices)
+  var ECC_FORMAT = { 0: 1, 1: 0, 2: 3, 3: 2 };
+
+  var ECC_CODEWORDS_PER_BLOCK = [
+    [-1,7,10,15,20,26,18,20,24,30,18,20,24,26,30,22,24,28,30,28,28,28,28,30,30,26,28,30,30,30,30,30,30,30,30,30,30,30,30,30,30],
+    [-1,10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26,26,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28],
+    [-1,13,22,18,26,18,24,18,22,20,24,28,26,24,20,30,24,28,28,26,30,28,30,30,30,30,28,30,30,30,30,30,30,30,30,30,30,30,30,30,30],
+    [-1,17,28,22,16,22,28,26,26,24,28,24,28,22,24,24,30,28,28,26,28,30,24,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30]
+  ];
+  var NUM_EC_BLOCKS = [
+    [-1,1,1,1,1,1,2,2,2,2,4,4,4,4,4,6,6,6,6,7,8,8,9,9,10,12,12,12,13,14,15,16,17,18,19,19,20,21,22,24,25],
+    [-1,1,1,1,2,2,4,4,4,5,5,5,8,9,9,10,10,11,13,14,16,17,17,18,20,21,23,25,26,28,29,31,33,35,37,38,40,43,45,47,49],
+    [-1,1,1,2,2,4,4,6,6,8,8,8,10,12,16,12,17,16,18,21,20,23,23,25,27,29,34,34,35,38,40,43,45,48,51,53,56,59,62,65,68],
+    [-1,1,1,2,4,4,4,5,6,8,8,11,11,16,16,18,16,19,21,25,25,25,34,30,32,35,37,40,42,45,48,51,54,57,60,63,66,70,74,77,81]
+  ];
+
+  // Galois field (GF(256)) tables for Reed-Solomon
+  var EXP = new Uint8Array(256), LOG = new Uint8Array(256);
+  (function () {
+    var x = 1;
+    for (var i = 0; i < 255; i++) {
+      EXP[i] = x;
+      LOG[x] = i;
+      x <<= 1;
+      if (x & 0x100) x ^= 0x11d;
+    }
+    for (var j = 255; j < 256; j++) EXP[j] = EXP[j - 255];
+  })();
+  function gfMul(a, b) { return (a === 0 || b === 0) ? 0 : EXP[(LOG[a] + LOG[b]) % 255]; }
+
+  function rsGenPoly(degree) {
+    var poly = [1];
+    for (var i = 0; i < degree; i++) {
+      poly.push(0);
+      for (var j = poly.length - 1; j > 0; j--) {
+        poly[j] = poly[j - 1] ^ gfMul(poly[j], EXP[i]);
+      }
+      poly[0] = gfMul(poly[0], EXP[i]);
+    }
+    return poly;
+  }
+  function rsRemainder(data, gen) {
+    var res = new Array(gen.length - 1).fill(0);
+    for (var i = 0; i < data.length; i++) {
+      var factor = data[i] ^ res.shift();
+      res.push(0);
+      for (var j = 0; j < gen.length - 1; j++) res[j] ^= gfMul(gen[j + 1], factor);
+    }
+    return res;
+  }
+
+  function getNumRawDataModules(ver) {
+    var result = (16 * ver + 128) * ver + 64;
+    if (ver >= 2) {
+      var numAlign = Math.floor(ver / 7) + 2;
+      result -= (25 * numAlign - 10) * numAlign - 55;
+      if (ver >= 7) result -= 36;
+    }
+    return result;
+  }
+  function getNumDataCodewords(ver, ecl) {
+    return Math.floor(getNumRawDataModules(ver) / 8)
+      - ECC_CODEWORDS_PER_BLOCK[ecl][ver] * NUM_EC_BLOCKS[ecl][ver];
+  }
+
+  function toUtf8(str) {
+    var bytes = [];
+    for (var i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i);
+      if (c < 0x80) bytes.push(c);
+      else if (c < 0x800) { bytes.push(0xc0 | (c >> 6), 0x80 | (c & 0x3f)); }
+      else if (c >= 0xd800 && c < 0xdc00 && i + 1 < str.length) {
+        var c2 = str.charCodeAt(++i);
+        var cp = 0x10000 + ((c - 0xd800) << 10) + (c2 - 0xdc00);
+        bytes.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 0x3f), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f));
+      } else { bytes.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 0x3f), 0x80 | (c & 0x3f)); }
+    }
+    return bytes;
+  }
+
+  function make(text, eclName) {
+    var ecl = ECC[eclName || 'M'];
+    var data = toUtf8(text);
+
+    // Choose smallest version that fits (byte mode)
+    var ver = -1, dataCapacityBits = 0;
+    for (var v = 1; v <= 40; v++) {
+      var cap = getNumDataCodewords(v, ecl) * 8;
+      var ccBits = (v <= 9) ? 8 : 16; // byte-mode char-count bits
+      var needed = 4 + ccBits + data.length * 8;
+      if (needed <= cap) { ver = v; dataCapacityBits = cap; break; }
+    }
+    if (ver === -1) return null; // too long for any QR version
+
+    // Build bitstream
+    var bits = [];
+    function appendBits(val, len) { for (var i = len - 1; i >= 0; i--) bits.push((val >> i) & 1); }
+    appendBits(4, 4); // byte mode
+    appendBits(data.length, ver <= 9 ? 8 : 16);
+    for (var i = 0; i < data.length; i++) appendBits(data[i], 8);
+    // Terminator + padding
+    appendBits(0, Math.min(4, dataCapacityBits - bits.length));
+    while (bits.length % 8 !== 0) bits.push(0);
+    // Bytes
+    var dataCodewords = [];
+    for (var k = 0; k < bits.length; k += 8) {
+      var b = 0;
+      for (var bi = 0; bi < 8; bi++) b = (b << 1) | bits[k + bi];
+      dataCodewords.push(b);
+    }
+    var pad = [0xEC, 0x11], pi = 0;
+    while (dataCodewords.length < dataCapacityBits / 8) dataCodewords.push(pad[pi++ % 2]);
+
+    // Split into blocks and add ECC (interleave)
+    var numBlocks = NUM_EC_BLOCKS[ecl][ver];
+    var eccLen = ECC_CODEWORDS_PER_BLOCK[ecl][ver];
+    var rawCodewords = Math.floor(getNumRawDataModules(ver) / 8);
+    var numShort = numBlocks - rawCodewords % numBlocks;
+    var shortLen = Math.floor(rawCodewords / numBlocks);
+    var gen = rsGenPoly(eccLen);
+    var blocks = [], off = 0;
+    for (var b2 = 0; b2 < numBlocks; b2++) {
+      var datLen = shortLen - eccLen + (b2 < numShort ? 0 : 1);
+      var dat = dataCodewords.slice(off, off + datLen);
+      off += datLen;
+      var ecc = rsRemainder(dat, gen);
+      blocks.push({ data: dat, ecc: ecc });
+    }
+    var result = [];
+    for (var c = 0; c < shortLen - eccLen + 1; c++) {
+      for (var bb = 0; bb < numBlocks; bb++) {
+        if (c < blocks[bb].data.length) result.push(blocks[bb].data[c]);
+      }
+    }
+    for (var c2 = 0; c2 < eccLen; c2++) {
+      for (var bb2 = 0; bb2 < numBlocks; bb2++) result.push(blocks[bb2].ecc[c2]);
+    }
+    var allCodewords = result;
+
+    // --- Build the matrix ---
+    var size = ver * 4 + 17;
+    var modules = [], isFunc = [];
+    for (var r = 0; r < size; r++) { modules.push(new Array(size).fill(false)); isFunc.push(new Array(size).fill(false)); }
+    function setFunc(x, y, val) { if (x >= 0 && x < size && y >= 0 && y < size) { modules[y][x] = val; isFunc[y][x] = true; } }
+
+    // Finder patterns + separators
+    function drawFinder(cx, cy) {
+      for (var dy = -4; dy <= 4; dy++) for (var dx = -4; dx <= 4; dx++) {
+        var xx = cx + dx, yy = cy + dy;
+        if (xx < 0 || xx >= size || yy < 0 || yy >= size) continue;
+        var d = Math.max(Math.abs(dx), Math.abs(dy));
+        setFunc(xx, yy, d !== 2 && d !== 4);
+      }
+    }
+    drawFinder(3, 3); drawFinder(size - 4, 3); drawFinder(3, size - 4);
+
+    // Timing patterns
+    for (var t = 0; t < size; t++) {
+      if (!isFunc[6][t]) setFunc(t, 6, t % 2 === 0);
+      if (!isFunc[t][6]) setFunc(6, t, t % 2 === 0);
+    }
+
+    // Alignment patterns
+    function alignPositions(v2) {
+      if (v2 === 1) return [];
+      var num = Math.floor(v2 / 7) + 2;
+      var step = (v2 === 32) ? 26 : Math.ceil((v2 * 4 + 4) / (num * 2 - 2)) * 2;
+      var pos = [6];
+      for (var p = size - 7; pos.length < num; p -= step) pos.splice(1, 0, p);
+      return pos;
+    }
+    var aligns = alignPositions(ver);
+    for (var ai = 0; ai < aligns.length; ai++) for (var aj = 0; aj < aligns.length; aj++) {
+      var ax = aligns[ai], ay = aligns[aj];
+      if (isFunc[ay][ax]) continue;
+      for (var dy2 = -2; dy2 <= 2; dy2++) for (var dx2 = -2; dx2 <= 2; dx2++) {
+        setFunc(ax + dx2, ay + dy2, Math.max(Math.abs(dx2), Math.abs(dy2)) !== 1);
+      }
+    }
+
+    // Reserve format & version info areas (filled later)
+    function reserveFormat() {
+      for (var i2 = 0; i2 < 9; i2++) { setFunc(i2, 8, false); setFunc(8, i2, false); }
+      for (var i3 = 0; i3 < 8; i3++) { setFunc(size - 1 - i3, 8, false); setFunc(8, size - 1 - i3, false); }
+      setFunc(8, size - 8, true); // dark module
+    }
+    reserveFormat();
+    if (ver >= 7) {
+      for (var i4 = 0; i4 < 18; i4++) {
+        var xx2 = i4 % 3, yy2 = Math.floor(i4 / 3);
+        setFunc(size - 11 + xx2, yy2, false);
+        setFunc(yy2, size - 11 + xx2, false);
+      }
+    }
+
+    // Place data bits with zig-zag
+    var bitIdx = 0;
+    var totalBits = allCodewords.length * 8;
+    for (var col = size - 1; col >= 1; col -= 2) {
+      if (col === 6) col = 5;
+      for (var vert = 0; vert < size; vert++) {
+        for (var j2 = 0; j2 < 2; j2++) {
+          var xcol = col - j2;
+          var upward = ((col + 1) & 2) === 0;
+          var yrow = upward ? size - 1 - vert : vert;
+          if (isFunc[yrow][xcol]) continue;
+          var bit = false;
+          if (bitIdx < totalBits) { bit = ((allCodewords[bitIdx >> 3] >> (7 - (bitIdx & 7))) & 1) !== 0; bitIdx++; }
+          modules[yrow][xcol] = bit;
+        }
+      }
+    }
+
+    // Masking
+    function maskFn(m, x, y) {
+      switch (m) {
+        case 0: return (x + y) % 2 === 0;
+        case 1: return y % 2 === 0;
+        case 2: return x % 3 === 0;
+        case 3: return (x + y) % 3 === 0;
+        case 4: return (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0;
+        case 5: return (x * y) % 2 + (x * y) % 3 === 0;
+        case 6: return ((x * y) % 2 + (x * y) % 3) % 2 === 0;
+        case 7: return ((x + y) % 2 + (x * y) % 3) % 2 === 0;
+      }
+    }
+    function applyMask(m) {
+      for (var y = 0; y < size; y++) for (var x = 0; x < size; x++) {
+        if (!isFunc[y][x] && maskFn(m, x, y)) modules[y][x] = !modules[y][x];
+      }
+    }
+    function drawFormat(m) {
+      var fmt = (ECC_FORMAT[ecl] << 3) | m;
+      var rem = fmt;
+      for (var i5 = 0; i5 < 10; i5++) rem = (rem << 1) ^ ((rem >> 9) * 0x537);
+      var bitsF = ((fmt << 10) | rem) ^ 0x5412;
+      for (var i6 = 0; i6 <= 5; i6++) setFunc(8, i6, ((bitsF >> i6) & 1) !== 0);
+      setFunc(8, 7, ((bitsF >> 6) & 1) !== 0);
+      setFunc(8, 8, ((bitsF >> 7) & 1) !== 0);
+      setFunc(7, 8, ((bitsF >> 8) & 1) !== 0);
+      for (var i7 = 9; i7 < 15; i7++) setFunc(14 - i7, 8, ((bitsF >> i7) & 1) !== 0);
+      for (var i8 = 0; i8 < 8; i8++) setFunc(size - 1 - i8, 8, ((bitsF >> i8) & 1) !== 0);
+      for (var i9 = 8; i9 < 15; i9++) setFunc(8, size - 15 + i9, ((bitsF >> i9) & 1) !== 0);
+      setFunc(8, size - 8, true);
+    }
+    function drawVersion() {
+      if (ver < 7) return;
+      var rem = ver;
+      for (var i10 = 0; i10 < 12; i10++) rem = (rem << 1) ^ ((rem >> 11) * 0x1f25);
+      var bitsV = (ver << 12) | rem;
+      for (var i11 = 0; i11 < 18; i11++) {
+        var b3 = ((bitsV >> i11) & 1) !== 0;
+        var a = Math.floor(i11 / 3), bb3 = i11 % 3;
+        setFunc(size - 11 + bb3, a, b3);
+        setFunc(a, size - 11 + bb3, b3);
+      }
+    }
+    drawVersion();
+
+    // Penalty score to pick best mask
+    function penalty() {
+      var p = 0, y, x, run, color;
+      for (y = 0; y < size; y++) { run = 1; for (x = 1; x < size; x++) { if (modules[y][x] === modules[y][x-1]) { run++; if (run === 5) p += 3; else if (run > 5) p++; } else run = 1; } }
+      for (x = 0; x < size; x++) { run = 1; for (y = 1; y < size; y++) { if (modules[y][x] === modules[y-1][x]) { run++; if (run === 5) p += 3; else if (run > 5) p++; } else run = 1; } }
+      for (y = 0; y < size - 1; y++) for (x = 0; x < size - 1; x++) { var c = modules[y][x]; if (c === modules[y][x+1] && c === modules[y+1][x] && c === modules[y+1][x+1]) p += 3; }
+      var dark = 0; for (y = 0; y < size; y++) for (x = 0; x < size; x++) if (modules[y][x]) dark++;
+      var ratio = dark * 100 / (size * size); p += Math.floor(Math.abs(ratio - 50) / 5) * 10;
+      return p;
+    }
+
+    var bestMask = 0, bestScore = Infinity, bestModules = null;
+    for (var m2 = 0; m2 < 8; m2++) {
+      applyMask(m2); drawFormat(m2);
+      var sc = penalty();
+      if (sc < bestScore) { bestScore = sc; bestMask = m2; bestModules = modules.map(function (row) { return row.slice(); }); }
+      applyMask(m2); // undo
+    }
+    modules = bestModules;
+
+    return {
+      size: size,
+      get: function (x, y) { return modules[y][x]; }
+    };
+  }
+
+  global.QR = { make: make };
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+/* Single-surface live Markdown highlighter for a contenteditable element.
+   Adapted from antonmedv/textarea (the original “text editor that lives in URL”):
+   the editing surface itself renders Markdown styling — there is no separate preview.
+   Exposes window.Editor (constructor) and window.parseMarkdown(element). */
+(function (global) {
+  'use strict';
+
+  function debounce(ms, fn) {
+    var timer;
+    return function () {
+      var args = arguments;
+      clearTimeout(timer);
+      timer = setTimeout(function () { fn.apply(null, args); }, ms);
+    };
+  }
+
+  // Inline Markdown highlighter. Reads element.textContent and rebuilds the
+  // element's children with styled <span>/<a> nodes (cursor is restored by Editor).
+  function parseMarkdown(element) {
+    var input = element.textContent;
+    var frag = document.createDocumentFragment();
+
+    var matchers = [
+      { name: 'md-codeblock', re: /```[^\n]*\n[\s\S]*?\n```/y },
+      { name: 'md-codeblock', re: /~~~[^\n]*\n[\s\S]*?\n~~~/y },
+      { name: 'md-h1', re: /^#[ \t]+[^\n]*$/my },
+      { name: 'md-h2', re: /^##[ \t]+[^\n]*$/my },
+      { name: 'md-h3', re: /^###[ \t]+[^\n]*$/my },
+      { name: 'md-h4', re: /^####[ \t]+[^\n]*$/my },
+      { name: 'md-h5', re: /^#####[ \t]+[^\n]*$/my },
+      { name: 'md-h6', re: /^######[ \t]+[^\n]*$/my },
+      { name: 'md-code', re: /`[^`\n]*`/y },
+      { name: 'md-bold', re: /\*\*[^*\n]+?\*\*/y },
+      { name: 'md-bold', re: /__[^_\n]+?__/y },
+      { name: 'md-strike', re: /~~[^~\n]+?~~/y },
+      { name: 'md-italic', re: /\*[^*\n]+?\*/y },
+      { name: 'md-italic', re: /_[^_\n]+?_/y },
+      { name: 'md-url', re: /https?:\/\/[^\s<>()\[\]{}"'`]+/y }
+    ];
+    var specials = ['`', '~', '*', '#', '_', 'h'];
+
+    var i = 0;
+    while (i < input.length) {
+      var matched = false;
+      for (var k = 0; k < matchers.length; k++) {
+        var m = matchers[k];
+        m.re.lastIndex = i;
+        var res = m.re.exec(input);
+        if (res && res.index === i) {
+          var raw = res[0];
+          if (m.name === 'md-url') {
+            var a = document.createElement('a');
+            a.className = 'md-url';
+            a.href = raw;
+            a.textContent = raw;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            frag.appendChild(a);
+          } else {
+            var span = document.createElement('span');
+            span.className = m.name;
+            span.textContent = raw;
+            frag.appendChild(span);
+          }
+          i += raw.length;
+          matched = true;
+          break;
+        }
+      }
+      if (matched) continue;
+
+      var next = input.length;
+      for (var c = 0; c < specials.length; c++) {
+        var idx = input.indexOf(specials[c], i);
+        if (idx !== -1 && idx < next) next = idx;
+      }
+      if (next === i) { frag.appendChild(document.createTextNode(input[i])); i++; continue; }
+      frag.appendChild(document.createTextNode(input.slice(i, next)));
+      i = next;
+    }
+
+    element.textContent = '';
+    element.appendChild(frag);
+    element.normalize();
+  }
+
+  // Cursor-preserving contenteditable editor with undo/redo.
+  function Editor(element, highlight) {
+    var listeners = [];
+    var history = [];
+    var at = -1, prev;
+
+    var debounceHighlight = debounce(30, function () {
+      var pos = saveSel();
+      highlight(element);
+      restoreSel(pos);
+    });
+
+    function shouldRecord(event) {
+      return !isUndo(event) && !isRedo(event)
+        && event.key !== 'Meta' && event.key !== 'Control' && event.key !== 'Alt'
+        && !event.key.startsWith('Arrow');
+    }
+
+    var recording = false;
+    var debounceRecordHistory = debounce(300, function (event) {
+      if (shouldRecord(event)) { recordHistory(); recording = false; }
+    });
+
+    function on(type, fn) { listeners.push([type, fn]); element.addEventListener(type, fn); }
+
+    on('keydown', function (event) {
+      if (event.defaultPrevented) return;
+      prev = toStr();
+      if (isUndo(event)) doUndo(event);
+      if (isRedo(event)) doRedo(event);
+      if (shouldRecord(event) && !recording) { recordHistory(); recording = true; }
+    });
+    on('keyup', function (event) {
+      if (event.defaultPrevented) return;
+      if (event.isComposing) return;
+      if (prev !== toStr()) debounceHighlight();
+      debounceRecordHistory(event);
+    });
+    on('paste', function () { setTimeout(function () { debounceHighlight(); recordHistory(); }, 10); });
+    on('cut', function () { setTimeout(function () { debounceHighlight(); recordHistory(); }, 10); });
+    on('beforeinput', function (event) {
+      if (event.inputType === 'historyUndo') doUndo(event);
+      if (event.inputType === 'historyRedo') doRedo(event);
+    });
+
+    function saveSel() {
+      var s = getSel();
+      var pos = { start: 0, end: 0, dir: undefined };
+      var anchorNode = s.anchorNode, anchorOffset = s.anchorOffset, focusNode = s.focusNode, focusOffset = s.focusOffset;
+      if (!anchorNode || !focusNode) throw 'no-selection';
+      if (anchorNode === element && focusNode === element) {
+        pos.start = (anchorOffset > 0 && element.textContent) ? element.textContent.length : 0;
+        pos.end = (focusOffset > 0 && element.textContent) ? element.textContent.length : 0;
+        pos.dir = (focusOffset >= anchorOffset) ? '->' : '<-';
+        return pos;
+      }
+      if (anchorNode.nodeType === Node.ELEMENT_NODE) {
+        var n1 = document.createTextNode(''); anchorNode.insertBefore(n1, anchorNode.childNodes[anchorOffset]); anchorNode = n1; anchorOffset = 0;
+      }
+      if (focusNode.nodeType === Node.ELEMENT_NODE) {
+        var n2 = document.createTextNode(''); focusNode.insertBefore(n2, focusNode.childNodes[focusOffset]); focusNode = n2; focusOffset = 0;
+      }
+      visit(element, function (el) {
+        if (el === anchorNode && el === focusNode) {
+          pos.start += anchorOffset; pos.end += focusOffset;
+          pos.dir = anchorOffset <= focusOffset ? '->' : '<-';
+          return 'stop';
+        }
+        if (el === anchorNode) {
+          pos.start += anchorOffset;
+          if (!pos.dir) pos.dir = '->'; else return 'stop';
+        } else if (el === focusNode) {
+          pos.end += focusOffset;
+          if (!pos.dir) pos.dir = '<-'; else return 'stop';
+        }
+        if (el.nodeType === Node.TEXT_NODE) {
+          if (pos.dir !== '->') pos.start += el.nodeValue.length;
+          if (pos.dir !== '<-') pos.end += el.nodeValue.length;
+        }
+      });
+      element.normalize();
+      return pos;
+    }
+
+    function restoreSel(pos) {
+      var s = getSel();
+      var startNode, startOffset = 0, endNode, endOffset = 0;
+      if (!pos.dir) pos.dir = '->';
+      if (pos.start < 0) pos.start = 0;
+      if (pos.end < 0) pos.end = 0;
+      if (pos.dir === '<-') { var st = pos.start; pos.start = pos.end; pos.end = st; }
+      var current = 0;
+      visit(element, function (el) {
+        if (el.nodeType !== Node.TEXT_NODE) return;
+        var len = (el.nodeValue || '').length;
+        if (current + len > pos.start) {
+          if (!startNode) { startNode = el; startOffset = pos.start - current; }
+          if (current + len > pos.end) { endNode = el; endOffset = pos.end - current; return 'stop'; }
+        }
+        current += len;
+      });
+      if (!startNode) { startNode = element; startOffset = element.childNodes.length; }
+      if (!endNode) { endNode = element; endOffset = element.childNodes.length; }
+      if (pos.dir === '<-') { var a = startNode, b = startOffset; startNode = endNode; startOffset = endOffset; endNode = a; endOffset = b; }
+      try { s.setBaseAndExtent(startNode, startOffset, endNode, endOffset); } catch (e) {}
+      element.normalize();
+    }
+
+    function doUndo(event) { event.preventDefault(); at--; var r = history[at]; if (r) { element.innerHTML = r.html; restoreSel(r.pos); } if (at < 0) at = 0; }
+    function doRedo(event) { event.preventDefault(); at++; var r = history[at]; if (r) { element.innerHTML = r.html; restoreSel(r.pos); } if (at >= history.length) at--; }
+
+    function recordHistory() {
+      var html = element.innerHTML;
+      var pos;
+      try { pos = saveSel(); } catch (e) { return; }
+      var last = history[at];
+      if (last && last.html === html && last.pos.start === pos.start && last.pos.end === pos.end) return;
+      at++;
+      history[at] = { html: html, pos: pos };
+      history.splice(at + 1);
+      var maxHistory = 10000;
+      if (at > maxHistory) { at = maxHistory; history.splice(0, 1); }
+    }
+
+    function visit(editorEl, visitor) {
+      var queue = [];
+      if (editorEl.firstChild) queue.push(editorEl.firstChild);
+      var el = queue.pop();
+      while (el) {
+        if (visitor(el) === 'stop') break;
+        if (el.nextSibling) queue.push(el.nextSibling);
+        if (el.firstChild) queue.push(el.firstChild);
+        el = queue.pop();
+      }
+    }
+
+    function isCtrl(e) { return e.metaKey || e.ctrlKey; }
+    function isUndo(e) { return isCtrl(e) && !e.shiftKey && e.code === 'KeyZ'; }
+    function isRedo(e) { return isCtrl(e) && e.shiftKey && e.code === 'KeyZ'; }
+    function toStr() { return element.textContent || ''; }
+    function getSel() { var root = element.getRootNode(); return (root.getSelection ? root.getSelection() : window.getSelection()); }
+
+    return {
+      set: function (content) { element.textContent = content; highlight(element); },
+      getText: function () { return element.textContent || ''; },
+      destroy: function () { for (var i = 0; i < listeners.length; i++) element.removeEventListener(listeners[i][0], listeners[i][1]); }
+    };
+  }
+
+  global.Editor = Editor;
+  global.parseMarkdown = parseMarkdown;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+/* IndexedDB wrapper for notes (with a localStorage fallback when IDB is unavailable).
+   Note shape: { id, title, content, createdAt, updatedAt }
+   Exposes window.Store with async CRUD methods. */
+(function (global) {
+  'use strict';
+
+  var DB_NAME = 'textarea-db';
+  var STORE = 'notes';
+  var VERSION = 1;
+  var dbPromise = null;
+
+  function openDB() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise(function (resolve, reject) {
+      if (!global.indexedDB) { reject(new Error('no-idb')); return; }
+      var req = indexedDB.open(DB_NAME, VERSION);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          var os = db.createObjectStore(STORE, { keyPath: 'id' });
+          os.createIndex('updatedAt', 'updatedAt');
+        }
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+    return dbPromise;
+  }
+
+  function tx(mode, fn) {
+    return openDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var t = db.transaction(STORE, mode);
+        var store = t.objectStore(STORE);
+        var out = fn(store);
+        t.oncomplete = function () { resolve(out && out.result !== undefined ? out.result : out); };
+        t.onerror = function () { reject(t.error); };
+        t.onabort = function () { reject(t.error); };
+      });
+    });
+  }
+
+  /* ---- localStorage fallback ---- */
+  var LS_KEY = 'textarea:notes';
+  var lsAvailable = (function () { try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); return true; } catch (e) { return false; } })();
+  function lsAll() { try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch (e) { return []; } }
+  function lsSave(arr) { try { localStorage.setItem(LS_KEY, JSON.stringify(arr)); } catch (e) {} }
+
+  var useIDB = !!global.indexedDB;
+
+  var Store = {
+    async list() {
+      if (useIDB) {
+        try {
+          var all = await tx('readonly', function (s) {
+            var r = s.getAll();
+            return new Promise(function (res) { r.onsuccess = function () { res({ result: r.result }); }; });
+          });
+          all.sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
+          return all;
+        } catch (e) { useIDB = false; }
+      }
+      return lsAll().sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
+    },
+    async get(id) {
+      if (useIDB) {
+        try {
+          return await tx('readonly', function (s) {
+            var r = s.get(id);
+            return new Promise(function (res) { r.onsuccess = function () { res({ result: r.result }); }; });
+          });
+        } catch (e) { useIDB = false; }
+      }
+      return lsAll().filter(function (n) { return n.id === id; })[0] || null;
+    },
+    async put(note) {
+      if (useIDB) {
+        try {
+          await tx('readwrite', function (s) { s.put(note); });
+          return note;
+        } catch (e) { useIDB = false; }
+      }
+      var arr = lsAll();
+      var idx = arr.findIndex(function (n) { return n.id === note.id; });
+      if (idx >= 0) arr[idx] = note; else arr.push(note);
+      lsSave(arr);
+      return note;
+    },
+    async remove(id) {
+      if (useIDB) {
+        try { await tx('readwrite', function (s) { s.delete(id); }); return; } catch (e) { useIDB = false; }
+      }
+      lsSave(lsAll().filter(function (n) { return n.id !== id; }));
+    }
+  };
+
+  Store.lsAvailable = lsAvailable;
+  global.Store = Store;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+/* textarea — a minimalist Markdown editor where the editing surface itself
+   renders Markdown live (no preview / no split pane), like antonmedv/textarea.
+   Plus: a notes sidebar (history + CRUD), IndexedDB persistence, and URL sharing. */
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var app = $('app'), editorEl = $('editor');
+  var noteList = $('noteList'), search = $('search');
+  var docTitle = $('docTitle'), status = $('status'), saveState = $('saveState');
+  var counts = $('counts'), readtime = $('readtime'), toastEl = $('toast');
+  var root = document.documentElement;
+
+  var LS_THEME = 'textarea:theme', LS_FONT = 'textarea:font';
+  var LS_SIDEBAR = 'textarea:sidebar', LS_ACTIVE = 'textarea:active';
+
+  var ed = new window.Editor(editorEl, window.parseMarkdown); // live-highlight engine
+  var current = null, notes = [], saveTimer = null;
+
+  /* ---------- helpers ---------- */
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function getText() { return ed.getText(); }
+  function titleFor(text) {
+    var first = (text.split('\n').find(function (l) { return l.trim() !== ''; }) || '').trim();
+    return first.replace(/^#{1,6}\s+/, '').replace(/[*_`~]/g, '').trim().slice(0, 80) || 'Untitled';
+  }
+  function fmtDate(ts) {
+    if (!ts) return '';
+    var d = new Date(ts), now = new Date();
+    if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+  function setText(text) { ed.set(text || ''); afterContentChange(); }
+  function afterContentChange() {
+    var text = getText();
+    editorEl.classList.toggle('is-empty', text.length === 0);
+    docTitle.textContent = titleFor(text);
+    document.title = (titleFor(text) !== 'Untitled') ? titleFor(text) + ' · textarea' : 'Textarea';
+    updateCounts(text);
+  }
+
+  /* ---------- base64url + deflate (URL sharing) ---------- */
+  function bytesToB64url(bytes) { var b = ''; for (var i = 0; i < bytes.length; i++) b += String.fromCharCode(bytes[i]); return btoa(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function b64urlToBytes(str) { str = str.replace(/-/g, '+').replace(/_/g, '/'); while (str.length % 4) str += '='; var bin = atob(str); var a = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a; }
+  var hasCS = typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
+  async function encode(text) {
+    if (!text) return '';
+    var utf8 = new TextEncoder().encode(text);
+    if (hasCS) { try { var cs = new CompressionStream('deflate-raw'); var w = cs.writable.getWriter(); w.write(utf8); w.close(); var buf = await new Response(cs.readable).arrayBuffer(); return 'd' + bytesToB64url(new Uint8Array(buf)); } catch (e) {} }
+    return 'u' + bytesToB64url(utf8);
+  }
+  async function decode(hash) {
+    if (!hash) return '';
+    var kind = hash[0], body = hash.slice(1);
+    try {
+      if (kind === 'd' && hasCS) { var ds = new DecompressionStream('deflate-raw'); var w = ds.writable.getWriter(); w.write(b64urlToBytes(body)); w.close(); var buf = await new Response(ds.readable).arrayBuffer(); return new TextDecoder().decode(buf); }
+      if (kind === 'u') return new TextDecoder().decode(b64urlToBytes(body));
+      return decodeURIComponent(hash);
+    } catch (e) { try { return decodeURIComponent(hash); } catch (_) { return ''; } }
+  }
+
+  /* ---------- toast ---------- */
+  var toastTimer = null;
+  function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('show'); if (toastTimer) clearTimeout(toastTimer); toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 1800); }
+
+  /* ---------- counts ---------- */
+  function updateCounts(text) {
+    var chars = text.length;
+    var words = (text.trim().match(/\S+/g) || []).length;
+    counts.textContent = words.toLocaleString() + (words === 1 ? ' word · ' : ' words · ') + chars.toLocaleString() + (chars === 1 ? ' character' : ' characters');
+    var mins = Math.max(1, Math.round(words / 200));
+    readtime.textContent = words > 0 ? ('~' + mins + ' min read') : '';
+  }
+
+  /* ---------- note list ---------- */
+  function renderList() {
+    var q = (search.value || '').toLowerCase().trim();
+    var filtered = notes.filter(function (n) {
+      if (!q) return true;
+      return (n.title || '').toLowerCase().indexOf(q) >= 0 || (n.content || '').toLowerCase().indexOf(q) >= 0;
+    });
+    noteList.innerHTML = '';
+    if (filtered.length === 0) {
+      var li = document.createElement('li'); li.className = 'note-empty';
+      li.textContent = q ? 'No notes match your search.' : 'No notes yet. Create one!';
+      noteList.appendChild(li); return;
+    }
+    filtered.forEach(function (n) {
+      var li = document.createElement('li');
+      li.className = 'note-item' + (current && n.id === current.id ? ' active' : '');
+      li.dataset.id = n.id;
+      var snippet = (n.content || '').replace(/^#{1,6}\s+.*$/m, '').replace(/[#*_`~>\-]/g, '').trim().split('\n').filter(Boolean)[0] || '';
+      li.innerHTML = '<div class="nt"></div><div class="nm"></div>' +
+        '<button class="note-del" title="Delete note" aria-label="Delete note"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>';
+      li.querySelector('.nt').textContent = n.title || 'Untitled';
+      li.querySelector('.nm').textContent = fmtDate(n.updatedAt) + (snippet ? '  ·  ' + snippet : '');
+      li.addEventListener('click', function (e) {
+        if (e.target.closest('.note-del')) return;
+        openNote(n.id);
+        if (isMobile()) setSidebar(false);
+      });
+      li.querySelector('.note-del').addEventListener('click', function (e) { e.stopPropagation(); deleteNote(n.id); });
+      noteList.appendChild(li);
+    });
+  }
+
+  /* ---------- save (debounced) ---------- */
+  function markDirty() { status.classList.remove('saved'); saveState.textContent = 'Saving…'; }
+  async function persist() {
+    if (!current) return;
+    var text = getText();
+    current.content = text;
+    current.title = titleFor(text);
+    current.updatedAt = Date.now();
+    await window.Store.put(current);
+    notes = notes.filter(function (n) { return n.id !== current.id; });
+    notes.unshift(current);
+    renderList();
+    var hash = await encode(text);
+    history.replaceState(null, '', hash ? '#' + hash : location.pathname + location.search);
+    status.classList.add('saved'); saveState.textContent = 'Saved';
+  }
+  function scheduleSave() { markDirty(); if (saveTimer) clearTimeout(saveTimer); saveTimer = setTimeout(persist, 350); }
+
+  /* fires on every edit of the contenteditable surface */
+  function onInput() { afterContentChange(); scheduleSave(); }
+
+  /* ---------- CRUD ---------- */
+  async function newNote(initialText) {
+    var text = initialText || '';
+    var note = { id: uid(), title: titleFor(text), content: text, createdAt: Date.now(), updatedAt: Date.now() };
+    await window.Store.put(note);
+    notes.unshift(note);
+    current = note;
+    try { localStorage.setItem(LS_ACTIVE, note.id); } catch (e) {}
+    setText(text);
+    var hash = await encode(text);
+    history.replaceState(null, '', hash ? '#' + hash : location.pathname + location.search);
+    status.classList.add('saved'); saveState.textContent = 'Saved';
+    renderList(); editorEl.focus();
+    return note;
+  }
+  async function openNote(id) {
+    var note = notes.filter(function (n) { return n.id === id; })[0] || await window.Store.get(id);
+    if (!note) return;
+    current = note;
+    try { localStorage.setItem(LS_ACTIVE, id); } catch (e) {}
+    setText(note.content || '');
+    var hash = await encode(note.content || '');
+    history.replaceState(null, '', hash ? '#' + hash : location.pathname + location.search);
+    status.classList.add('saved'); saveState.textContent = 'Saved';
+    renderList();
+    var sc = editorEl.parentNode; if (sc) sc.scrollTop = 0;
+    editorEl.focus();
+  }
+  async function deleteNote(id) {
+    var note = notes.filter(function (n) { return n.id === id; })[0];
+    var label = note ? (note.title || 'this note') : 'this note';
+    if (!confirm('Delete “' + label + '”? This cannot be undone.')) return;
+    await window.Store.remove(id);
+    notes = notes.filter(function (n) { return n.id !== id; });
+    if (current && current.id === id) {
+      if (notes.length) await openNote(notes[0].id);
+      else await newNote('');
+    }
+    renderList(); toast('Note deleted');
+  }
+
+  /* ---------- actions ---------- */
+  async function copyLink() {
+    await persist();
+    var url = location.href;
+    try { await navigator.clipboard.writeText(url); toast('Link copied to clipboard'); }
+    catch (e) { try { var ta = document.createElement('textarea'); ta.value = url; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('Link copied to clipboard'); } catch (_) { toast('Copy failed'); } }
+  }
+  function download() {
+    var text = getText();
+    var name = titleFor(text).replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 60).trim() || 'note';
+    var blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name + '.md';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 200);
+    toast('Downloaded ' + name + '.md');
+  }
+
+  /* ---------- sidebar / theme / font ---------- */
+  function isMobile() { return window.matchMedia('(max-width: 780px)').matches; }
+  function setSidebar(open) { app.setAttribute('data-sidebar', open ? 'open' : 'closed'); try { localStorage.setItem(LS_SIDEBAR, open ? 'open' : 'closed'); } catch (e) {} }
+  function toggleSidebar() { setSidebar(app.getAttribute('data-sidebar') !== 'open'); }
+  function cap(v) { return v[0].toUpperCase() + v.slice(1); }
+  function cycleTheme() {
+    var order = ['dark', 'light', 'auto'];
+    var next = order[(order.indexOf(root.getAttribute('data-theme')) + 1) % order.length];
+    root.setAttribute('data-theme', next); $('themeLabel').textContent = cap(next);
+    try { localStorage.setItem(LS_THEME, next); } catch (e) {}
+  }
+  function cycleFont() {
+    var order = ['sans', 'mono', 'serif'];
+    var next = order[(order.indexOf(root.getAttribute('data-font')) + 1) % order.length];
+    root.setAttribute('data-font', next); $('fontLabel').textContent = cap(next);
+    try { localStorage.setItem(LS_FONT, next); } catch (e) {}
+  }
+
+  /* ---------- QR ---------- */
+  var qrDialog = $('qrDialog');
+  async function showQR() {
+    await persist();
+    var url = location.href, canvas = $('qrcanvas'), hint = $('qrhint'), ctx = canvas.getContext('2d'), px = 280;
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, px, px);
+    var qr = window.QR && window.QR.make(url, 'M');
+    if (!qr) { hint.textContent = 'This note is too long for a QR code — use “Copy link”.'; ctx.fillStyle = '#000'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Note too long for QR', px / 2, px / 2); }
+    else {
+      var quiet = 4, n = qr.size + quiet * 2, scale = Math.floor(px / n), off = Math.floor((px - scale * n) / 2);
+      ctx.fillStyle = '#000';
+      for (var y = 0; y < qr.size; y++) for (var x = 0; x < qr.size; x++) if (qr.get(x, y)) ctx.fillRect(off + (x + quiet) * scale, off + (y + quiet) * scale, scale, scale);
+      hint.textContent = 'Scan with a phone camera to open this exact note.';
+    }
+    if (qrDialog.showModal) qrDialog.showModal();
+  }
+
+  /* ---------- keyboard shortcuts ---------- */
+  function onKey(e) {
+    var mod = e.metaKey || e.ctrlKey;
+    if (mod && e.shiftKey && (e.code === 'KeyN')) { e.preventDefault(); newNote(''); if (isMobile()) setSidebar(false); return; }
+    if (mod && e.code === 'KeyS') { e.preventDefault(); download(); return; }
+    if (mod && e.code === 'KeyK') { e.preventDefault(); copyLink(); return; }
+    if (mod && e.code === 'KeyB') { e.preventDefault(); toggleSidebar(); return; }
+  }
+
+  /* ---------- init ---------- */
+  async function init() {
+    try { var t = localStorage.getItem(LS_THEME); if (t) root.setAttribute('data-theme', t); var f = localStorage.getItem(LS_FONT); if (f) root.setAttribute('data-font', f); } catch (e) {}
+    $('themeLabel').textContent = cap(root.getAttribute('data-theme') || 'dark');
+    $('fontLabel').textContent = cap(root.getAttribute('data-font') || 'sans');
+
+    var savedSidebar = 'open';
+    try { savedSidebar = localStorage.getItem(LS_SIDEBAR) || 'open'; } catch (e) {}
+    if (isMobile()) savedSidebar = 'closed';
+    setSidebar(savedSidebar);
+
+    notes = await window.Store.list();
+
+    var hashText = '';
+    var hash = location.hash.replace(/^#/, '');
+    if (hash) hashText = await decode(hash);
+
+    if (hashText) {
+      var match = notes.filter(function (n) { return (n.content || '') === hashText; })[0];
+      if (match) await openNote(match.id);
+      else { await newNote(hashText); toast('Imported note from link'); }
+    } else {
+      var activeId = null; try { activeId = localStorage.getItem(LS_ACTIVE); } catch (e) {}
+      var active = activeId && notes.filter(function (n) { return n.id === activeId; })[0];
+      if (active) await openNote(active.id);
+      else if (notes.length) await openNote(notes[0].id);
+      else await newNote('# Welcome to textarea\n\nThis is a minimalist Markdown editor — the text you type **is** the rendered view. No preview pane.\n\nTry some Markdown:\n\n## A heading\n\nSome **bold text**, *italic text*, and ~~strikethrough~~ together.\n\nInline code like `const x = 42;` and a link: https://example.com\n\n```js\nfunction hello() {\n  console.log("Hello, world!");\n}\n```\n\nNotes are saved locally (IndexedDB) and listed in the sidebar (⌘B). Share any note with Copy link (⌘K) or a QR code.');
+    }
+
+    renderList();
+  }
+
+  // events
+  editorEl.addEventListener('input', onInput);
+  editorEl.addEventListener('blur', function () { if (current) persist(); });
+  editorEl.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('a.md-url'); if (a) { e.preventDefault(); window.open(a.getAttribute('href'), '_blank', 'noopener'); } });
+  document.addEventListener('keydown', onKey);
+  search.addEventListener('input', renderList);
+  $('newNoteBtn').addEventListener('click', function () { newNote(''); if (isMobile()) setSidebar(false); });
+  $('sidebarToggle').addEventListener('click', toggleSidebar);
+  $('backdrop').addEventListener('click', function () { setSidebar(false); });
+  $('copyBtn').addEventListener('click', copyLink);
+  $('downloadBtn').addEventListener('click', download);
+  $('deleteBtn').addEventListener('click', function () { if (current) deleteNote(current.id); });
+  $('qrBtn').addEventListener('click', showQR);
+  $('qrClose').addEventListener('click', function () { qrDialog.close(); });
+  $('themeBtn').addEventListener('click', cycleTheme);
+  $('fontBtn').addEventListener('click', cycleFont);
+  qrDialog.addEventListener('click', function (e) { if (e.target === qrDialog) qrDialog.close(); });
+
+  init();
+})();
+
+</script>
+</body>
+</html>

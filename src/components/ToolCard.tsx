@@ -1,5 +1,5 @@
 import type { CSSProperties, MouseEvent } from "react";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowRight, Bookmark, ExternalLink, Pin } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { EnrichedTool } from "../hooks/useAutoTools";
 import { isToolRecent } from "../hooks/useAutoTools";
@@ -15,9 +15,13 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 interface ToolCardProps {
   tool: EnrichedTool;
+  bookmarked?: boolean;
+  pinned?: boolean;
+  onToggleBookmark?: (id: string) => void;
+  onTogglePin?: (id: string) => void;
 }
 
-export function ToolCard({ tool }: ToolCardProps) {
+export function ToolCard({ tool, bookmarked = false, pinned = false, onToggleBookmark, onTogglePin }: ToolCardProps) {
   const catColor = CATEGORY_COLORS[tool.category] ?? "oklch(0.65 0.12 200)";
   const catBg = `oklch(from ${catColor} l c h / 0.12)`;
   const showNewBadge = tool.autoDetected && isToolRecent(tool.date);
@@ -34,8 +38,23 @@ export function ToolCard({ tool }: ToolCardProps) {
     window.open(newTabUrl, "_blank", "noopener");
   }
 
+  function handleBookmark(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    onToggleBookmark?.(tool.id);
+  }
+
+  function handlePin(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    onTogglePin?.(tool.id);
+  }
+
   return (
-    <article className="tool-card" style={{ "--cat": catColor } as CSSProperties}>
+    <article
+      className={`tool-card ${pinned ? "is-pinned" : ""} ${bookmarked ? "is-bookmarked" : ""}`}
+      style={{ "--cat": catColor } as CSSProperties}
+    >
       <div className="tool-card-inner">
         <div className="tool-card-top">
           <span className="tool-type-badge" style={{ background: catBg, color: "var(--cat)" }}>
@@ -44,16 +63,39 @@ export function ToolCard({ tool }: ToolCardProps) {
           <span className="tool-cat-badge" style={{ background: catBg, color: "var(--cat)" }}>
             {tool.category}
           </span>
+          {pinned && <span className="tool-pin-badge">PINNED</span>}
           {showNewBadge && <span className="tool-new-badge">NEW</span>}
-          <button
-            type="button"
-            className="tool-newtab-btn"
-            onClick={handleNewTab}
-            title="Open in new tab"
-            aria-label={`Open ${tool.name} in new tab`}
-          >
-            <ExternalLink size={14} aria-hidden="true" />
-          </button>
+          <div className="tool-card-actions">
+            <button
+              type="button"
+              className={`tool-action-btn ${bookmarked ? "active" : ""}`}
+              onClick={handleBookmark}
+              title={bookmarked ? "Remove bookmark" : "Bookmark tool"}
+              aria-label={bookmarked ? `Remove ${tool.name} bookmark` : `Bookmark ${tool.name}`}
+              aria-pressed={bookmarked}
+            >
+              <Bookmark size={14} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className={`tool-action-btn ${pinned ? "active pin-active" : ""}`}
+              onClick={handlePin}
+              title={pinned ? "Unpin tool" : "Pin tool"}
+              aria-label={pinned ? `Unpin ${tool.name}` : `Pin ${tool.name}`}
+              aria-pressed={pinned}
+            >
+              <Pin size={14} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="tool-action-btn"
+              onClick={handleNewTab}
+              title="Open in new tab"
+              aria-label={`Open ${tool.name} in new tab`}
+            >
+              <ExternalLink size={14} aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         <Link to={`/tool/${tool.id}`} className="tool-card-link">

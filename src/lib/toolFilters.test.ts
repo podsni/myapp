@@ -71,4 +71,43 @@ describe("filterAndSortTools", () => {
 
     expect(result.map((tool) => tool.name)).toEqual(["Notes", "JSON Formatter"]);
   });
+
+  test("filters bookmarked tools", () => {
+    const result = filterAndSortTools(tools, {
+      search: "",
+      activeCategory: "__bookmarked__",
+      activeType: "all",
+      sortBy: "name-asc",
+      bookmarkedIds: ["json", "notes"],
+      pinnedIds: [],
+    });
+
+    expect(result.map((tool) => tool.id)).toEqual(["json", "notes"]);
+  });
+
+  test("filters pinned tools", () => {
+    const result = filterAndSortTools(tools, {
+      search: "",
+      activeCategory: "__pinned__",
+      activeType: "all",
+      sortBy: "name-asc",
+      bookmarkedIds: [],
+      pinnedIds: ["gradient"],
+    });
+
+    expect(result.map((tool) => tool.id)).toEqual(["gradient"]);
+  });
+
+  test("keeps pinned tools above the selected sort order", () => {
+    const result = filterAndSortTools(tools, {
+      search: "",
+      activeCategory: "All",
+      activeType: "all",
+      sortBy: "name-asc",
+      bookmarkedIds: [],
+      pinnedIds: ["notes"],
+    });
+
+    expect(result.map((tool) => tool.id)).toEqual(["notes", "gradient", "json"]);
+  });
 });

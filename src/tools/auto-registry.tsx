@@ -102,6 +102,21 @@ export const tools: EnrichedTool[] = [
     "date": 1781117547433.1296
   },
   {
+    "id": "textarea",
+    "name": "Textarea",
+    "description": "",
+    "type": "html",
+    "path": "html/textarea",
+    "category": "Text",
+    "tags": [
+      "html",
+      "textarea"
+    ],
+    "autoDetected": true,
+    "filePath": "html/textarea.html",
+    "date": 1781254228825.6033
+  },
+  {
     "id": "pelangan-wifi",
     "name": "Pelangan Wifi",
     "description": "",

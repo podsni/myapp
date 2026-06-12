@@ -3,11 +3,13 @@ import { AlertTriangle, Hexagon, Moon, Search, Sparkles, Sun, X } from "lucide-r
 import { ToolCard } from "../components/ToolCard";
 import { useAutoTools } from "../hooks/useAutoTools";
 import { useTheme } from "../hooks/useTheme";
+import { useToolPreferences } from "../hooks/useToolPreferences";
 import { filterAndSortTools, type ToolSort, type ToolTypeFilter } from "../lib/toolFilters";
 
 export function HomePage() {
   const { allTools, scanning, newCount, error } = useAutoTools();
   const { theme, toggleTheme } = useTheme();
+  const toolPreferences = useToolPreferences();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [activeType, setActiveType] = useState<ToolTypeFilter>("all");
@@ -19,15 +21,34 @@ export function HomePage() {
   }, [allTools]);
 
   const visibleTools = useMemo(
-    () => filterAndSortTools(allTools, { search, activeCategory, activeType, sortBy }),
-    [allTools, search, activeCategory, activeType, sortBy],
+    () =>
+      filterAndSortTools(allTools, {
+        search,
+        activeCategory,
+        activeType,
+        sortBy,
+        bookmarkedIds: toolPreferences.bookmarkedIds,
+        pinnedIds: toolPreferences.pinnedIds,
+      }),
+    [allTools, search, activeCategory, activeType, sortBy, toolPreferences.bookmarkedIds, toolPreferences.pinnedIds],
   );
 
+  const bookmarkCount = toolPreferences.bookmarkedIds.filter((id) => allTools.some((tool) => tool.id === id)).length;
+  const pinCount = toolPreferences.pinnedIds.filter((id) => allTools.some((tool) => tool.id === id)).length;
   const hasActiveFilters = search.length > 0 || activeCategory !== "All" || activeType !== "all";
+  const categoryLabel =
+    activeCategory !== "All" &&
+    activeCategory !== "__new__" &&
+    activeCategory !== "__bookmarked__" &&
+    activeCategory !== "__pinned__"
+      ? ` in ${activeCategory}`
+      : "";
   const resultLabel = `${visibleTools.length} tool${visibleTools.length === 1 ? "" : "s"}${
     scanning ? " (scanning for more)" : ""
-  }${activeCategory !== "All" && activeCategory !== "__new__" ? ` in ${activeCategory}` : ""}${
-    activeCategory === "__new__" ? " recently detected" : ""
+  }${categoryLabel}${activeCategory === "__new__" ? " recently detected" : ""}${
+    activeCategory === "__bookmarked__" ? " bookmarked" : ""
+  }${activeCategory === "__pinned__" ? " pinned" : ""}${
+    pinCount > 0 && activeCategory === "All" ? `, ${pinCount} pinned first` : ""
   }${search ? ` matching "${search}"` : ""}`;
 
   function resetFilters() {
@@ -125,6 +146,22 @@ export function HomePage() {
           </label>
 
           <div className="filter-chips" aria-label="Tool categories">
+            <button
+              type="button"
+              className={`filter-chip filter-chip-pin ${activeCategory === "__pinned__" ? "active" : ""}`}
+              onClick={() => setActiveCategory(activeCategory === "__pinned__" ? "All" : "__pinned__")}
+              aria-pressed={activeCategory === "__pinned__"}
+            >
+              Pinned {pinCount}
+            </button>
+            <button
+              type="button"
+              className={`filter-chip filter-chip-bookmark ${activeCategory === "__bookmarked__" ? "active" : ""}`}
+              onClick={() => setActiveCategory(activeCategory === "__bookmarked__" ? "All" : "__bookmarked__")}
+              aria-pressed={activeCategory === "__bookmarked__"}
+            >
+              Bookmarks {bookmarkCount}
+            </button>
             {allCategories.map((category) => (
               <button
                 type="button"
@@ -164,7 +201,14 @@ export function HomePage() {
       {visibleTools.length > 0 ? (
         <div className="tools-grid">
           {visibleTools.map((tool) => (
-            <ToolCard key={tool.id} tool={tool} />
+            <ToolCard
+              key={tool.id}
+              tool={tool}
+              bookmarked={toolPreferences.isBookmarked(tool.id)}
+              pinned={toolPreferences.isPinned(tool.id)}
+              onToggleBookmark={toolPreferences.toggleBookmark}
+              onTogglePin={toolPreferences.togglePin}
+            />
           ))}
         </div>
       ) : (

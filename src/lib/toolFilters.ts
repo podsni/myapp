@@ -9,10 +9,14 @@ export interface ToolFilterState {
   activeCategory: string;
   activeType: ToolTypeFilter;
   sortBy: ToolSort;
+  bookmarkedIds?: string[];
+  pinnedIds?: string[];
 }
 
 export function filterAndSortTools(tools: EnrichedTool[], filters: ToolFilterState) {
   const query = filters.search.trim().toLowerCase();
+  const bookmarkedIds = new Set(filters.bookmarkedIds ?? []);
+  const pinnedIds = new Set(filters.pinnedIds ?? []);
 
   const filtered = tools.filter((tool) => {
     const matchesSearch =
@@ -25,6 +29,10 @@ export function filterAndSortTools(tools: EnrichedTool[], filters: ToolFilterSta
       filters.activeCategory === "All" ||
       (filters.activeCategory === "__new__"
         ? Boolean(tool.autoDetected && isToolRecent(tool.date))
+        : filters.activeCategory === "__bookmarked__"
+          ? bookmarkedIds.has(tool.id)
+          : filters.activeCategory === "__pinned__"
+            ? pinnedIds.has(tool.id)
         : tool.category === filters.activeCategory);
 
     const matchesType = filters.activeType === "all" || tool.type === filters.activeType;
@@ -33,6 +41,10 @@ export function filterAndSortTools(tools: EnrichedTool[], filters: ToolFilterSta
   });
 
   return filtered.sort((a, b) => {
+    const aPinned = pinnedIds.has(a.id);
+    const bPinned = pinnedIds.has(b.id);
+    if (aPinned !== bPinned) return aPinned ? -1 : 1;
+
     if (filters.sortBy === "newest") return (b.date ?? 0) - (a.date ?? 0);
     if (filters.sortBy === "oldest") return (a.date ?? 0) - (b.date ?? 0);
     if (filters.sortBy === "name-desc") return b.name.localeCompare(a.name);
