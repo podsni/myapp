@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pengubah Format Teks</title>
+<style>
+  /* ============================================================
+     DESIGN READ: dev-utility redesign, dark-tech language,
+     neutral zinc base + ONE warm accent (amber). Mono-forward.
+     Restrained motion (intensity ~3). Offline, single file:
+     no CDN fonts/icons (system + ui-monospace stacks).
+     One accent locked. One radius scale: surfaces 14px,
+     controls 10px. Icons = simple inline stroke SVG, 1.5px.
+     ============================================================ */
+  :root{
+    --bg:#09090b;        /* zinc-950 */
+    --panel:#161618;     /* zinc-900-ish */
+    --panel-2:#101012;
+    --inset:#0c0c0e;
+    --line:#262629;      /* zinc-800 */
+    --line-2:#3a3a3f;    /* zinc-700 */
+    --txt:#fafafa;       /* zinc-50 */
+    --mut:#a1a1aa;       /* zinc-400 */
+    --mut-2:#71717a;     /* zinc-500 */
+    --acc:#f59e0b;       /* amber-500 (single locked accent) */
+    --acc-soft:rgba(245,158,11,.12);
+    --acc-line:rgba(245,158,11,.30);
+    --on-acc:#1a1205;    /* dark text on amber for AA contrast */
+    --ok:#f59e0b;
+    --err:#fb7185;       /* rose for error feedback only */
+    --r-surface:14px;
+    --r-control:10px;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code","Roboto Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+    min-height:100dvh;display:flex;align-items:center;justify-content:center;
+    padding:24px;line-height:1.55;-webkit-font-smoothing:antialiased;
+    /* single soft accent wash, not a mesh */
+    background-image:radial-gradient(620px 320px at 50% -8%,var(--acc-soft),transparent 70%);
+    background-repeat:no-repeat;
+  }
+  .app{width:100%;max-width:600px;animation:in .5s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  /* Header: left-aligned, intentional, not a centered hero */
+  .top{display:flex;align-items:center;gap:13px;margin-bottom:18px;padding:0 2px}
+  .mark{
+    flex:none;width:42px;height:42px;border-radius:var(--r-control);
+    background:var(--acc);color:var(--on-acc);display:grid;place-items:center;
+    box-shadow:0 8px 20px -8px rgba(245,158,11,.5);
+  }
+  .top h1{margin:0;font-size:17px;font-weight:650;letter-spacing:-.2px}
+  .top p{margin:2px 0 0;font-size:12.5px;color:var(--mut)}
+  .top code{font-family:var(--mono);color:var(--acc);font-size:12px}
+
+  .panel{
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);border-radius:var(--r-surface);
+    box-shadow:0 24px 60px -28px rgba(0,0,0,.8);overflow:hidden;
+  }
+  .field{padding:16px}
+  .field + .field{border-top:1px solid var(--line)}
+  .flabel{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+  .flabel span{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--mut-2);text-transform:uppercase}
+  .count{font-family:var(--mono);font-size:11px;color:var(--mut-2)}
+  textarea{
+    width:100%;border:1px solid var(--line);background:var(--inset);color:var(--txt);
+    border-radius:var(--r-control);padding:13px 14px;font-family:var(--mono);
+    font-size:13.5px;line-height:1.7;resize:vertical;outline:none;min-height:128px;
+    transition:border-color .15s,box-shadow .15s;
+  }
+  textarea::placeholder{color:var(--mut-2)}
+  textarea:focus{border-color:var(--acc-line);box-shadow:0 0 0 3px var(--acc-soft)}
+  textarea[readonly]{color:#fde9c8;background:#0a0a0c}
+
+  /* action bar */
+  .bar{display:grid;grid-template-columns:1fr;gap:10px;padding:16px;border-top:1px solid var(--line);background:rgba(255,255,255,.012)}
+  .bar .secondary-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:420px){.bar .secondary-row{grid-template-columns:1fr}}
+
+  .btn{
+    border:1px solid transparent;cursor:pointer;font-family:var(--sans);font-weight:600;
+    font-size:14px;padding:12px 16px;border-radius:var(--r-control);
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    transition:transform .12s ease,background .15s,border-color .15s,box-shadow .2s,color .15s;
+  }
+  .btn:active{transform:translateY(1px) scale(.985)}
+  .btn svg{width:17px;height:17px;flex:none}
+  /* primary: solid amber, dark text (AA pass) */
+  .btn-primary{background:var(--acc);color:var(--on-acc);box-shadow:0 10px 26px -12px rgba(245,158,11,.6)}
+  .btn-primary:hover{background:#fbb536;box-shadow:0 14px 30px -12px rgba(245,158,11,.7)}
+  /* soft accent (same family, locked) */
+  .btn-soft{background:var(--acc-soft);color:var(--acc);border-color:var(--acc-line)}
+  .btn-soft:hover{background:rgba(245,158,11,.18)}
+  /* ghost neutral */
+  .btn-ghost{background:transparent;color:var(--mut);border-color:var(--line-2)}
+  .btn-ghost:hover{color:var(--txt);border-color:var(--mut-2);background:rgba(255,255,255,.03)}
+  .kbd{font-family:var(--mono);font-size:11px;color:var(--mut-2);text-align:center;padding:10px 0 2px}
+  .kbd b{color:var(--mut);font-weight:600}
+
+  .foot{text-align:center;font-size:11.5px;color:var(--mut-2);margin-top:14px;font-family:var(--mono)}
+
+  /* toast */
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(150%);
+    background:#1b1b1f;border:1px solid var(--line-2);color:var(--txt);
+    padding:12px 16px;border-radius:var(--r-control);display:flex;align-items:center;gap:10px;
+    font-size:13.5px;font-weight:550;box-shadow:0 18px 40px -16px rgba(0,0,0,.8);
+    transition:transform .3s cubic-bezier(.2,.9,.3,1.1),opacity .3s;opacity:0;z-index:50;max-width:90vw;
+  }
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .toast svg{width:18px;height:18px;flex:none}
+  .toast.success svg{color:var(--acc)}
+  .toast.error svg{color:var(--err)}
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6 3 12l5 6"/><path d="m16 6 5 6-5 6"/></svg>
+      </div>
+      <div>
+        <h1>Pengubah Format Teks</h1>
+        <p>Bungkus tiap bagian dengan backtick <code>`&nbsp;`</code>, pemisah <code>|</code></p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="field">
+        <div class="flabel">
+          <span>Masukan</span>
+          <span class="count" id="inCount">0 baris</span>
+        </div>
+        <textarea id="inputText" spellcheck="false" placeholder="6233586379106077|12|2026|502&#10;6233586370845020|08|2028|581"></textarea>
+      </div>
+
+      <div class="field">
+        <div class="flabel">
+          <span>Hasil</span>
+          <span class="count" id="outCount">0 baris</span>
+        </div>
+        <textarea id="outputText" spellcheck="false" readonly placeholder="Hasil akan muncul di sini"></textarea>
+      </div>
+
+      <div class="bar">
+        <button class="btn btn-primary" onclick="convertText()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+          Ubah Format
+        </button>
+        <div class="secondary-row">
+          <button class="btn btn-ghost" onclick="clearAll()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Bersihkan
+          </button>
+          <button class="btn btn-soft" onclick="copyText()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Salin Hasil
+          </button>
+        </div>
+        <div class="kbd"><b>Ctrl</b> / <b>Cmd</b> + <b>Enter</b> untuk ubah cepat</div>
+      </div>
+    </div>
+
+    <div class="foot">Diproses di perangkat kamu &middot; tanpa server</div>
+  </div>
+
+  <div id="toast" class="toast">
+    <svg id="toastIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    <span id="toastMessage">Tersalin</span>
+  </div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const inEl = $('inputText'), outEl = $('outputText');
+
+  const lineCount = v => v.trim() ? v.split('\n').filter(l => l.trim()).length : 0;
+  function updateCounts(){
+    $('inCount').textContent  = lineCount(inEl.value) + ' baris';
+    $('outCount').textContent = lineCount(outEl.value) + ' baris';
+  }
+  inEl.addEventListener('input', updateCounts);
+
+  function convertText(){
+    const input = inEl.value;
+    if(!input.trim()){ showToast('Masukkan teks terlebih dahulu', 'error'); inEl.focus(); return; }
+    outEl.value = input.split('\n').map(line => {
+      if(!line.trim()) return '';
+      return line.split('|').map(p => '`' + p + '`').join('|');
+    }).join('\n');
+    updateCounts();
+    showToast('Format berhasil diubah', 'success');
+  }
+
+  function clearAll(){
+    inEl.value = ''; outEl.value = ''; updateCounts(); inEl.focus();
+    showToast('Dibersihkan', 'success');
+  }
+
+  async function copyText(){
+    if(!outEl.value){ showToast('Belum ada hasil untuk disalin', 'error'); return; }
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        await navigator.clipboard.writeText(outEl.value);
+      } else {
+        outEl.select(); outEl.setSelectionRange(0, 99999);
+        document.execCommand('copy'); window.getSelection().removeAllRanges();
+      }
+      showToast('Hasil tersalin ke clipboard', 'success');
+    } catch(e){
+      try{
+        outEl.select(); outEl.setSelectionRange(0, 99999);
+        document.execCommand('copy'); window.getSelection().removeAllRanges();
+        showToast('Hasil tersalin', 'success');
+      } catch(err){ showToast('Browser tidak mendukung copy otomatis', 'error'); }
+    }
+  }
+
+  const ICON_OK  = '<path d="M20 6 9 17l-5-5"/>';
+  const ICON_ERR = '<circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/>';
+  let toastTimeout;
+  function showToast(message, type){
+    const t = $('toast');
+    $('toastMessage').textContent = message;
+    $('toastIcon').innerHTML = type === 'success' ? ICON_OK : ICON_ERR;
+    t.classList.remove('success','error');
+    t.classList.add(type, 'show');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  inEl.addEventListener('keydown', e => {
+    if((e.ctrlKey || e.metaKey) && e.key === 'Enter') convertText();
+  });
+  updateCounts();
+</script>
+</body>
+</html>
