@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<meta name="color-scheme" content="light dark">
+<title>Watermark KTP — Editor Watermark Aman & Privat</title>
+<meta name="description" content="Tambahkan watermark pada scan KTP. Edit langsung di gambar: geser, putar, ubah ukuran. 100% diproses di browser Anda.">
+<style>
+  /* ============================================================
+     Design system — single locked accent (emerald) on a neutral zinc base.
+     Radius scale: panels 14px · inputs/buttons 10px · pills full · swatches 8px.
+     Shadows tinted to the background hue (no pure-black drop shadows).
+     Icons: inline SVG (stroke 1.75) — inlined for offline/privacy (no network).
+     ============================================================ */
+  :root{
+    --bg:#f6f6f7; --panel:#ffffff; --panel-2:#f4f4f5; --ink:#18181b; --muted:#71717a;
+    --line:#e4e4e7; --line-strong:#d4d4d8;
+    --accent:#059669; --accent-press:#047857; --accent-soft:#ecfdf5; --accent-ink:#ffffff;
+    --danger:#dc2626; --danger-soft:#fef2f2;
+    --sel:#059669; --handle:#ffffff;
+    --shadow-sm:0 1px 2px rgba(24,24,27,.05);
+    --shadow:0 1px 2px rgba(24,24,27,.04), 0 12px 30px rgba(24,24,27,.07);
+    --r-card:14px; --r:10px;
+  }
+  html[data-theme="dark"]{
+    --bg:#0a0a0b; --panel:#141416; --panel-2:#1d1d20; --ink:#fafafa; --muted:#a1a1aa;
+    --line:#27272a; --line-strong:#3f3f46;
+    --accent:#10b981; --accent-press:#34d399; --accent-soft:#0c2a22; --accent-ink:#06231b;
+    --danger:#f87171; --danger-soft:#2a1416;
+    --sel:#10b981;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.5; -webkit-font-smoothing:antialiased; min-height:100vh}
+  a{color:var(--accent)}
+  svg{display:block}
+  .wrap{max-width:1240px; margin:0 auto; padding:22px 18px 100px}
+  @media (min-width:861px){ .wrap{padding-bottom:52px} }
+
+  header.top{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:20px; flex-wrap:wrap}
+  .brand{display:flex; align-items:center; gap:12px}
+  .brand .logo{width:42px; height:42px; border-radius:12px; background:var(--accent); display:grid; place-items:center; box-shadow:var(--shadow-sm)}
+  .brand .logo svg{width:22px; height:22px; color:#fff}
+  .brand h1{font-size:18px; margin:0; letter-spacing:-.3px; font-weight:650}
+  .brand p{font-size:12.5px; margin:1px 0 0; color:var(--muted)}
+  .top-actions{display:flex; gap:8px; align-items:center}
+  .chip{display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--accent); background:var(--accent-soft);
+    padding:6px 12px; border-radius:999px; font-weight:600; white-space:nowrap}
+  .chip svg{width:14px; height:14px}
+  @media (max-width:520px){ .chip{display:none} }
+  .icon-btn{width:40px; height:40px; border-radius:var(--r); border:1px solid var(--line); background:var(--panel); color:var(--ink); cursor:pointer; display:grid; place-items:center; transition:.15s}
+  .icon-btn svg{width:19px; height:19px}
+  .icon-btn:hover{border-color:var(--line-strong); background:var(--panel-2)}
+  .ico-sun{display:none}
+  html[data-theme="dark"] .ico-sun{display:block}
+  html[data-theme="dark"] .ico-moon{display:none}
+
+  .layout{display:grid; grid-template-columns:360px 1fr; gap:20px; align-items:start}
+  .stagecol{min-width:0}
+  @media (min-width:861px){ .controlcol{order:1; position:sticky; top:18px; max-height:calc(100vh - 36px); overflow:auto; overscroll-behavior:contain} .stagecol{order:2} }
+  @media (max-width:860px){ .layout{grid-template-columns:1fr; gap:14px} .stagecol{order:1} .controlcol{order:2} }
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--r-card); box-shadow:var(--shadow)}
+  .controls{padding:18px}
+  .sec-title{font-size:11px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin:2px 0 13px; font-weight:700}
+  .field{margin-bottom:15px}
+  .field:last-child{margin-bottom:0}
+  label.lbl{display:block; font-size:12.5px; font-weight:600; margin-bottom:7px; letter-spacing:-.1px}
+  .hint{font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.45}
+  input[type=text], textarea, select{width:100%; border:1px solid var(--line-strong); background:var(--panel-2); color:var(--ink);
+    border-radius:var(--r); padding:10px 12px; font-size:14px; font-family:inherit; outline:none; transition:.15s}
+  textarea{resize:vertical; min-height:60px}
+  input[type=text]:focus, textarea:focus, select:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+  select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .switch-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 13px; border:1px solid var(--line); border-radius:var(--r); background:var(--panel-2)}
+  .switch-row .txt{font-size:13px; font-weight:600}
+  .switch-row .txt small{display:block; font-weight:400; color:var(--muted); font-size:11.5px; margin-top:1px}
+  .switch{position:relative; width:44px; height:25px; flex:0 0 auto}
+  .switch input{opacity:0; width:0; height:0; position:absolute}
+  .switch .track{position:absolute; inset:0; background:var(--line-strong); border-radius:999px; transition:.18s; cursor:pointer}
+  .switch .track::before{content:""; position:absolute; width:19px; height:19px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.18s; box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .switch input:checked + .track{background:var(--accent)}
+  .switch input:checked + .track::before{transform:translateX(19px)}
+
+  .range-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px}
+  .range-head .val{font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; background:var(--panel-2); padding:2px 8px; border-radius:7px; border:1px solid var(--line)}
+  input[type=range]{width:100%; -webkit-appearance:none; appearance:none; height:5px; background:var(--line-strong); border-radius:999px; outline:none; margin:6px 0}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--accent); cursor:pointer; border:3px solid var(--panel); box-shadow:var(--shadow-sm)}
+  input[type=range]::-moz-range-thumb{width:16px; height:16px; border-radius:50%; background:var(--accent); cursor:pointer; border:3px solid var(--panel)}
+
+  .color-field{display:flex; gap:8px; align-items:center}
+  .color-field input[type=color]{width:44px; height:42px; padding:0; border:1px solid var(--line-strong); border-radius:var(--r); background:none; cursor:pointer}
+  .swatches{display:flex; gap:7px; margin-top:9px; flex-wrap:wrap}
+  .swatch{width:24px; height:24px; border-radius:8px; cursor:pointer; border:1px solid rgba(0,0,0,.14); transition:.12s}
+  .swatch:hover{transform:scale(1.12)}
+
+  .presets{display:flex; flex-wrap:wrap; gap:7px}
+  .preset{font-size:12px; padding:7px 13px; border-radius:999px; border:1px solid var(--line-strong); background:var(--panel-2); color:var(--ink); cursor:pointer; transition:.15s}
+  .preset:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-soft)}
+
+  .divider{height:1px; background:var(--line); margin:17px -18px}
+
+  .btns{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:12px 14px; border-radius:var(--r); font-size:14px; font-weight:600; cursor:pointer; border:1px solid transparent; transition:.15s; font-family:inherit; letter-spacing:-.1px}
+  .btn svg{width:18px; height:18px; flex:0 0 auto}
+  .btn-primary{background:var(--accent); color:var(--accent-ink)}
+  .btn-primary:hover{background:var(--accent-press)}
+  .btn:disabled{opacity:.45; cursor:not-allowed}
+  .btn-ghost{background:var(--panel); color:var(--danger); border-color:var(--line-strong)}
+  .btn-ghost:hover{background:var(--danger-soft); border-color:var(--danger)}
+  .btn-wide{grid-column:1 / -1}
+  .btn-sec{background:var(--panel); color:var(--ink); border-color:var(--line-strong)}
+  .btn-sec:hover{background:var(--panel-2); border-color:var(--accent)}
+
+  /* Stage */
+  .stage-wrap{padding:14px}
+  .stage{position:relative; border:2px dashed var(--line-strong); border-radius:var(--r-card);
+    background:
+      linear-gradient(45deg,var(--panel-2) 25%,transparent 25%) 0 0/22px 22px,
+      linear-gradient(-45deg,var(--panel-2) 25%,transparent 25%) 0 0/22px 22px,
+      linear-gradient(45deg,transparent 75%,var(--panel-2) 75%) 0 0/22px 22px,
+      linear-gradient(-45deg,transparent 75%,var(--panel-2) 75%) 0 0/22px 22px;
+    min-height:60vh; display:grid; place-items:center; overflow:hidden; transition:.15s; touch-action:none}
+  @media (max-width:860px){ .stage{min-height:52vh} }
+  .stage.drag-over{border-color:var(--accent); background:var(--accent-soft)}
+  .stage.has-image{min-height:auto; border-style:solid; border-color:var(--line); padding:6px}
+  .empty{text-align:center; color:var(--muted); padding:34px 20px; pointer-events:none}
+  .empty .big{color:var(--line-strong); margin:0 auto 12px}
+  .empty .big svg{width:54px; height:54px; margin:0 auto}
+  .empty h3{margin:0 0 5px; font-size:16px; color:var(--ink); letter-spacing:-.2px}
+  .empty p{margin:0; font-size:13px}
+  .empty .browse{display:inline-block; margin-top:16px; pointer-events:auto; color:var(--accent); font-weight:600; cursor:pointer; border:1px solid var(--line-strong); padding:9px 18px; border-radius:999px; background:var(--panel); transition:.15s}
+  .empty .browse:hover{border-color:var(--accent); background:var(--accent-soft)}
+  canvas#view{display:block; max-width:100%; border-radius:9px; box-shadow:0 8px 30px rgba(24,24,27,.16); touch-action:none}
+  html[data-theme="dark"] canvas#view{box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  .stage-tip{position:absolute; left:50%; bottom:11px; transform:translateX(-50%); font-size:11px; color:var(--muted); background:var(--panel); padding:5px 13px; border-radius:999px; border:1px solid var(--line); box-shadow:var(--shadow-sm); white-space:nowrap; max-width:94%; overflow:hidden; text-overflow:ellipsis}
+  @media (max-width:520px){ .stage-tip{font-size:10px} }
+
+  #inlineEdit{position:absolute; transform:translate(-50%,-50%); z-index:20; display:none;
+    border:2px solid var(--sel); border-radius:8px; background:rgba(255,255,255,.97); color:#111;
+    padding:6px 8px; font-family:inherit; text-align:center; line-height:1.2; resize:none; outline:none;
+    box-shadow:var(--shadow); min-width:120px}
+
+  .toolbar{display:flex; gap:8px; padding:0 14px 14px; flex-wrap:wrap; align-items:center}
+  .toolbar .btn{flex:0 0 auto; padding:9px 13px; font-size:13px}
+  .spacer{flex:1 1 auto}
+  @media (max-width:520px){ .toolbar .lbl-txt{display:none} }
+
+  details.info{margin-top:20px; background:var(--panel); border:1px solid var(--line); border-radius:var(--r-card); box-shadow:var(--shadow); overflow:hidden}
+  details.info > summary{cursor:pointer; padding:16px 18px; font-weight:600; font-size:14px; list-style:none; display:flex; align-items:center; gap:10px; letter-spacing:-.1px}
+  details.info > summary::-webkit-details-marker{display:none}
+  details.info > summary .lead{width:18px; height:18px; color:var(--muted)}
+  details.info > summary .arr{margin-left:auto; transition:.2s; color:var(--muted); width:18px; height:18px}
+  details.info[open] > summary .arr{transform:rotate(90deg)}
+  .info-body{padding:0 18px 18px; font-size:13.5px}
+  .info-body h4{margin:16px 0 7px; font-size:13.5px; letter-spacing:-.1px}
+  .info-body ul{margin:6px 0; padding-left:20px}
+  .info-body li{margin:5px 0}
+  .info-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+  @media (max-width:620px){ .info-grid{grid-template-columns:1fr} }
+  .lock-callout{display:flex; gap:12px; align-items:flex-start; background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 28%,transparent); border-radius:var(--r); padding:13px 15px; margin-top:8px}
+  .lock-callout svg{width:20px; height:20px; color:var(--accent); flex:0 0 auto; margin-top:1px}
+  .lock-callout p{margin:0; font-size:13px}
+  footer{text-align:center; margin-top:26px; font-size:12px; color:var(--muted)}
+  .visually-hidden{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
+
+  .mobilebar{position:fixed; left:0; right:0; bottom:0; z-index:40; display:none; gap:10px; padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    background:color-mix(in srgb,var(--panel) 92%,transparent); backdrop-filter:blur(10px); border-top:1px solid var(--line)}
+  .mobilebar .btn{flex:1}
+  @media (max-width:860px){ .mobilebar{display:flex} }
+
+  .toast{position:fixed; left:50%; bottom:84px; transform:translateX(-50%) translateY(20px); background:var(--ink); color:var(--bg); padding:11px 18px; border-radius:999px; font-size:13px; font-weight:600; opacity:0; pointer-events:none; transition:.25s; z-index:60; box-shadow:var(--shadow)}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  @media (min-width:861px){ .toast{bottom:28px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.7-7 9-4-1.3-7-4.4-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+      <div>
+        <h1>Watermark KTP</h1>
+        <p>Edit langsung di gambar — aman &amp; 100% di perangkat Anda</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Tanpa upload server</span>
+      <button class="icon-btn" id="themeBtn" title="Ganti tema" aria-label="Ganti tema">
+        <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8z"/></svg>
+        <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- STAGE -->
+    <section class="panel stagecol" aria-label="Pratinjau">
+      <div class="stage-wrap">
+        <div class="stage" id="stage">
+          <div class="empty" id="empty">
+            <div class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="11" r="2"/><path d="M5.5 16.5c.6-1.6 4.4-1.6 5 0M14 10h4M14 13h4M14 16h2.5"/></svg></div>
+            <h3>Tarik gambar KTP ke sini</h3>
+            <p>atau tempel (Ctrl/Cmd + V) • diproses sepenuhnya di browser Anda</p>
+            <span class="browse" id="browseLink">Pilih file</span>
+          </div>
+          <canvas id="view" style="display:none"></canvas>
+          <textarea id="inlineEdit" rows="1" spellcheck="false"></textarea>
+          <div class="stage-tip" id="stageTip" style="display:none">Seret untuk pindah • bulatan atas untuk putar • sudut untuk ubah ukuran • klik 2x untuk edit teks</div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-sec" id="centerBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span class="lbl-txt">Ke Tengah</span></button>
+        <button class="btn btn-sec" id="changeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg><span class="lbl-txt">Ganti Gambar</span></button>
+        <div class="spacer"></div>
+        <button class="btn btn-primary" id="downloadBtn2" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 4 5-4"/><path d="M5 21h14"/></svg>Unduh PNG</button>
+      </div>
+    </section>
+
+    <!-- CONTROLS -->
+    <aside class="panel controls controlcol" aria-label="Pengaturan watermark">
+      <div class="sec-title">Gambar &amp; Teks</div>
+
+      <div class="field">
+        <button class="btn btn-primary btn-wide" id="pickBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Pilih Gambar KTP</button>
+        <input type="file" id="fileInput" accept="image/*" class="visually-hidden">
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="wmText">Teks Watermark</label>
+        <textarea id="wmText" placeholder="Contoh: Verifikasi e-wallet, 10-10-2021">Verifikasi, 10-10-2021</textarea>
+        <div class="hint">Tips: klik dua kali watermark di gambar untuk edit langsung. Enter = baris baru.</div>
+      </div>
+
+      <div class="field">
+        <label class="lbl">Preset cepat</label>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <div class="field">
+        <div class="switch-row">
+          <div class="txt">Watermark Otomatis<small>Isi tanggal hari ini otomatis</small></div>
+          <label class="switch"><input type="checkbox" id="autoDate"><span class="track"></span></label>
+        </div>
+      </div>
+      <div class="field">
+        <div class="switch-row">
+          <div class="txt">Mode Ubin (Tiled)<small>Sebar watermark ke seluruh gambar</small></div>
+          <label class="switch"><input type="checkbox" id="tiled"><span class="track"></span></label>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="sec-title">Gaya</div>
+
+      <div class="field row">
+        <div>
+          <label class="lbl" for="font">Font</label>
+          <select id="font">
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="'Times New Roman', serif" selected>Times New Roman</option>
+            <option value="'Courier New', monospace">Courier New</option>
+            <option value="Georgia, serif">Georgia</option>
+            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+            <option value="Verdana, sans-serif">Verdana</option>
+            <option value="Impact, sans-serif">Impact</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl" for="weight">Ketebalan</label>
+          <select id="weight">
+            <option value="normal">Normal</option>
+            <option value="bold" selected>Tebal</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="posSelect">Posisi cepat</label>
+        <select id="posSelect">
+          <option value="center" selected>Tengah</option>
+          <option value="top-left">Kiri Atas</option>
+          <option value="top-right">Kanan Atas</option>
+          <option value="bottom-left">Kiri Bawah</option>
+          <option value="bottom-right">Kanan Bawah</option>
+          <option value="" disabled>Kustom (digeser manual)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <div class="range-head"><label class="lbl" for="size" style="margin:0">Ukuran</label><span class="val" id="sizeVal">6%</span></div>
+        <input type="range" id="size" min="2" max="24" step="0.5" value="6">
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="color">Warna</label>
+        <div class="color-field">
+          <input type="color" id="color" value="#ff0000">
+          <input type="text" id="colorHex" value="#ff0000" spellcheck="false">
+        </div>
+        <div class="swatches" id="swatches"></div>
+      </div>
+
+      <div class="field">
+        <div class="range-head"><label class="lbl" for="rotate" style="margin:0">Rotasi</label><span class="val" id="rotateVal">-30°</span></div>
+        <input type="range" id="rotate" min="-180" max="180" step="1" value="-30">
+      </div>
+
+      <div class="field">
+        <div class="range-head"><label class="lbl" for="opacity" style="margin:0">Transparansi</label><span class="val" id="opacityVal">55%</span></div>
+        <input type="range" id="opacity" min="5" max="100" step="1" value="55">
+      </div>
+
+      <div class="divider"></div>
+      <div class="btns">
+        <button class="btn btn-ghost" id="resetBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Reset</button>
+        <button class="btn btn-primary" id="downloadBtn" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 4 5-4"/><path d="M5 21h14"/></svg>Unduh</button>
+      </div>
+    </aside>
+  </div>
+
+  <details class="info">
+    <summary>
+      <svg class="lead" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+      Tentang &amp; Kebijakan Privasi
+      <svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </summary>
+    <div class="info-body">
+      <p>Watermark KTP adalah alat berbasis web gratis dan aman untuk menambahkan watermark pada scan KTP Anda. Watermark berupa teks berisi tanggal dan tujuan scan KTP — misalnya <em>"Verifikasi e-wallet, 10-10-2021"</em> — untuk mencegah penyalahgunaan dan penipuan data.</p>
+      <div class="lock-callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <p><strong>Privasi penuh.</strong> Semua proses berjalan 100% di sisi Anda (client-side). Tidak ada gambar yang pernah dikirim keluar dari browser Anda — tidak ada server, upload, atau penyimpanan.</p>
+      </div>
+      <div class="info-grid">
+        <div>
+          <h4>Cara pakai</h4>
+          <ul>
+            <li>Tarik / pilih / tempel gambar KTP.</li>
+            <li><strong>Seret</strong> watermark untuk memindahkan.</li>
+            <li>Tarik <strong>bulatan di atas</strong> untuk memutar.</li>
+            <li>Tarik <strong>sudut kotak</strong> untuk mengubah ukuran.</li>
+            <li><strong>Klik dua kali</strong> watermark untuk mengedit teks.</li>
+            <li>Unduh sebagai PNG resolusi penuh.</li>
+          </ul>
+        </div>
+        <div>
+          <h4>Kebijakan Privasi</h4>
+          <ul>
+            <li>Tidak pernah menjual atau menyalahgunakan data KTP siapa pun.</li>
+            <li>Tidak ada file yang dikirim keluar dari browser Anda.</li>
+            <li>Semua pemrosesan dilakukan sepenuhnya di perangkat Anda.</li>
+            <li>Berkomitmen pada keamanan data pribadi di dunia digital.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <footer>Dibuat untuk keamanan data pribadi • Tidak ada data yang meninggalkan perangkat Anda</footer>
+</div>
+
+<div class="mobilebar">
+  <button class="btn btn-sec" id="pickBtnM"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Gambar</button>
+  <button class="btn btn-primary" id="downloadBtnM" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 4 5-4"/><path d="M5 21h14"/></svg>Unduh PNG</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const els = {
+    fileInput:$("fileInput"), pickBtn:$("pickBtn"), pickBtnM:$("pickBtnM"), browseLink:$("browseLink"),
+    stage:$("stage"), empty:$("empty"), canvas:$("view"), stageTip:$("stageTip"), inlineEdit:$("inlineEdit"),
+    wmText:$("wmText"), autoDate:$("autoDate"), tiled:$("tiled"),
+    font:$("font"), weight:$("weight"), posSelect:$("posSelect"),
+    size:$("size"), sizeVal:$("sizeVal"), color:$("color"), colorHex:$("colorHex"), swatches:$("swatches"),
+    rotate:$("rotate"), rotateVal:$("rotateVal"), opacity:$("opacity"), opacityVal:$("opacityVal"),
+    resetBtn:$("resetBtn"), downloadBtn:$("downloadBtn"), downloadBtn2:$("downloadBtn2"), downloadBtnM:$("downloadBtnM"),
+    centerBtn:$("centerBtn"), changeBtn:$("changeBtn"), presets:$("presets"), themeBtn:$("themeBtn"), toast:$("toast")
+  };
+  const ctx = els.canvas.getContext("2d");
+  const PI = Math.PI;
+  const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+
+  const DEFAULTS = { text:"Verifikasi, 10-10-2021", font:"'Times New Roman', serif", weight:"bold",
+    size:6, color:"#ff0000", rotate:-30, opacity:55 };
+  const state = { img:null, nW:0, nH:0, scale:1, posX:0.5, posY:0.5,
+    geo:null, mode:null, startDist:0, startSize:0, editing:false, _mdx:0, _mdy:0 };
+
+  const PRESETS = ["Verifikasi e-wallet","Verifikasi bank","Pendaftaran akun","Hanya untuk verifikasi","Tidak berlaku untuk transaksi lain"];
+  const SWATCHES = ["#ff0000","#000000","#ffffff","#1d4ed8","#059669","#f59e0b","#db2777","#9ca3af"];
+
+  function toast(m){ els.toast.textContent = m; els.toast.classList.add("show");
+    clearTimeout(toast._t); toast._t = setTimeout(() => els.toast.classList.remove("show"), 1900); }
+  function todayStr(){ const d = new Date(), p = n => String(n).padStart(2,"0");
+    return p(d.getDate()) + "-" + p(d.getMonth()+1) + "-" + d.getFullYear(); }
+
+  /* ---- preset + swatch UI ---- */
+  PRESETS.forEach(p => {
+    const b = document.createElement("button");
+    b.className = "preset"; b.type = "button"; b.textContent = p;
+    b.addEventListener("click", () => {
+      const date = els.autoDate.checked ? todayStr() : "10-10-2021";
+      els.wmText.value = p + ", " + date; render();
+    });
+    els.presets.appendChild(b);
+  });
+  SWATCHES.forEach(c => {
+    const s = document.createElement("span");
+    s.className = "swatch"; s.style.background = c; s.title = c;
+    s.addEventListener("click", () => { els.color.value = c; els.colorHex.value = c; render(); });
+    els.swatches.appendChild(s);
+  });
+
+  /* ---- theme ---- */
+  function applyTheme(t){
+    document.documentElement.setAttribute("data-theme", t);
+    try{ localStorage.setItem("wmktp-theme", t); }catch(e){}
+  }
+  (function initTheme(){
+    let t = "light";
+    try{ t = localStorage.getItem("wmktp-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }catch(e){}
+    applyTheme(t);
+  })();
+  els.themeBtn.addEventListener("click", () =>
+    applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"));
+
+  /* ---- file load ---- */
+  function loadFile(file){
+    if(!file || !file.type.startsWith("image/")){ toast("File harus berupa gambar"); return; }
+    const r = new FileReader();
+    r.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        state.img = img; state.nW = img.naturalWidth; state.nH = img.naturalHeight;
+        state.posX = 0.5; state.posY = 0.5;
+        els.empty.style.display = "none"; els.canvas.style.display = "block"; els.stage.classList.add("has-image");
+        els.stageTip.style.display = els.tiled.checked ? "none" : "block";
+        [els.downloadBtn, els.downloadBtn2, els.downloadBtnM].forEach(b => b.disabled = false);
+        layout(); render(); toast("Gambar dimuat");
+      };
+      img.onerror = () => toast("Gagal memuat gambar");
+      img.src = e.target.result;
+    };
+    r.readAsDataURL(file);
+  }
+  const openPicker = () => els.fileInput.click();
+  [els.pickBtn, els.pickBtnM, els.browseLink, els.changeBtn].forEach(b => b && b.addEventListener("click", openPicker));
+  els.fileInput.addEventListener("change", e => { if(e.target.files[0]) loadFile(e.target.files[0]); els.fileInput.value = ""; });
+  ["dragenter","dragover"].forEach(ev => els.stage.addEventListener(ev, e => { e.preventDefault(); els.stage.classList.add("drag-over"); }));
+  ["dragleave","drop"].forEach(ev => els.stage.addEventListener(ev, e => { e.preventDefault(); if(ev !== "dragleave" || e.target === els.stage) els.stage.classList.remove("drag-over"); }));
+  els.stage.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if(f) loadFile(f); });
+  window.addEventListener("paste", e => {
+    const items = e.clipboardData && e.clipboardData.items; if(!items) return;
+    for(const it of items){ if(it.type.startsWith("image/")){ loadFile(it.getAsFile()); break; } }
+  });
+
+  /* ---- layout: fill stage, export stays full-res ---- */
+  function layout(){
+    if(!state.img) return;
+    const MAXRES = 2200;
+    let rs = Math.min(MAXRES/state.nW, MAXRES/state.nH, 1); if(!isFinite(rs) || rs <= 0) rs = 1;
+    const cw = Math.round(state.nW*rs), ch = Math.round(state.nH*rs);
+    els.canvas.width = cw; els.canvas.height = ch; state.scale = rs;
+    const availW = Math.max(els.stage.clientWidth - 28, 120);
+    const availH = Math.max(window.innerHeight*0.72, 340);
+    let ds = Math.min(availW/cw, availH/ch); if(!isFinite(ds) || ds <= 0) ds = 1; ds = Math.min(ds, 4);
+    els.canvas.style.width = Math.round(cw*ds) + "px";
+    els.canvas.style.height = Math.round(ch*ds) + "px";
+  }
+  window.addEventListener("resize", () => { if(state.img){ layout(); render(); if(state.editing) positionEditor(); } });
+
+  /* ---- watermark geometry + drawing ---- */
+  function geometry(c, scale){
+    const lines = (els.wmText.value || "").split("\n");
+    const fontPx = (parseFloat(els.size.value)/100) * state.nH * scale;
+    c.font = els.weight.value + " " + fontPx + "px " + els.font.value;
+    let maxW = 0; lines.forEach(l => { maxW = Math.max(maxW, c.measureText(l || " ").width); });
+    const lineH = fontPx*1.18, h = lines.length*lineH;
+    return { lines, fontPx, lineH, w:maxW, h,
+      angle: parseFloat(els.rotate.value)*PI/180,
+      cx: state.posX*c.canvas.width, cy: state.posY*c.canvas.height };
+  }
+  function drawText(c, g){
+    c.save();
+    c.globalAlpha = parseFloat(els.opacity.value)/100; c.fillStyle = els.color.value;
+    c.font = els.weight.value + " " + g.fontPx + "px " + els.font.value;
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.translate(g.cx, g.cy); c.rotate(g.angle);
+    const startY = -((g.lines.length-1)*g.lineH)/2;
+    g.lines.forEach((ln,i) => c.fillText(ln, 0, startY + i*g.lineH));
+    c.restore();
+  }
+  function drawTiled(c){
+    const g = geometry(c, c === ctx ? state.scale : 1);
+    c.save();
+    c.globalAlpha = parseFloat(els.opacity.value)/100; c.fillStyle = els.color.value;
+    c.font = els.weight.value + " " + g.fontPx + "px " + els.font.value;
+    c.textAlign = "center"; c.textBaseline = "middle";
+    const gapX = Math.max(g.w, g.fontPx*4)*1.5, gapY = Math.max(g.h, g.fontPx*2)*2.4;
+    const W = c.canvas.width, H = c.canvas.height, diag = Math.sqrt(W*W + H*H);
+    c.translate(W/2, H/2); c.rotate(g.angle);
+    for(let y = -diag; y < diag; y += gapY) for(let x = -diag; x < diag; x += gapX){
+      c.save(); c.translate(x, y);
+      const sy = -((g.lines.length-1)*g.lineH)/2;
+      g.lines.forEach((ln,i) => c.fillText(ln, 0, sy + i*g.lineH));
+      c.restore();
+    }
+    c.restore();
+  }
+
+  function pxRatio(){ const r = els.canvas.getBoundingClientRect(); return r.width ? els.canvas.width/r.width : 1; }
+  function boxOf(g){ const pad = g.fontPx*0.35; return { bw: g.w + pad*2, bh: g.h + pad*2 }; }
+  function cssVar(name, fallback){ const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); return v || fallback; }
+
+  function drawSelection(g){
+    if(state.editing) return;
+    const pr = pxRatio(), { bw, bh } = boxOf(g);
+    const rot = Math.max(30*pr, g.fontPx*0.9), hs = 6.5*pr, lw = 1.6*pr;
+    ctx.save(); ctx.translate(g.cx, g.cy); ctx.rotate(g.angle);
+    ctx.strokeStyle = cssVar("--sel", "#059669"); ctx.lineWidth = lw;
+    ctx.setLineDash([6*pr, 4*pr]); ctx.strokeRect(-bw/2, -bh/2, bw, bh); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(0, -bh/2); ctx.lineTo(0, -bh/2 - rot); ctx.stroke();
+    const corners = [[-bw/2,-bh/2],[bw/2,-bh/2],[bw/2,bh/2],[-bw/2,bh/2]];
+    ctx.fillStyle = cssVar("--handle", "#ffffff");
+    corners.forEach(p => { ctx.beginPath(); ctx.arc(p[0], p[1], hs, 0, 2*PI); ctx.fill(); ctx.stroke(); });
+    ctx.beginPath(); ctx.arc(0, -bh/2 - rot, hs*1.15, 0, 2*PI); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
+  function render(){
+    if(!state.img) return;
+    ctx.clearRect(0, 0, els.canvas.width, els.canvas.height);
+    ctx.drawImage(state.img, 0, 0, els.canvas.width, els.canvas.height);
+    if(els.tiled.checked){ drawTiled(ctx); state.geo = null; return; }
+    const g = geometry(ctx, state.scale); state.geo = g; drawText(ctx, g); drawSelection(g);
+  }
+
+  /* ---- pointer interaction (move / rotate / resize) ---- */
+  function ptr(e){
+    const r = els.canvas.getBoundingClientRect();
+    const sx = els.canvas.width/r.width, sy = els.canvas.height/r.height;
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+    return { x: cx*sx, y: cy*sy };
+  }
+  function toLocal(p, g){
+    const dx = p.x - g.cx, dy = p.y - g.cy, c = Math.cos(-g.angle), s = Math.sin(-g.angle);
+    return { x: dx*c - dy*s, y: dx*s + dy*c };
+  }
+  function hitTest(p){
+    const g = state.geo; if(!g) return null;
+    const pr = pxRatio(), { bw, bh } = boxOf(g), rot = Math.max(30*pr, g.fontPx*0.9), hr = 14*pr;
+    const L = toLocal(p, g);
+    if(Math.hypot(L.x - 0, L.y - (-bh/2 - rot)) <= hr*1.2) return "rotate";
+    const corners = [[-bw/2,-bh/2],[bw/2,-bh/2],[bw/2,bh/2],[-bw/2,bh/2]];
+    for(const cnr of corners){ if(Math.hypot(L.x - cnr[0], L.y - cnr[1]) <= hr) return "resize"; }
+    if(Math.abs(L.x) <= bw/2 && Math.abs(L.y) <= bh/2) return "move";
+    return null;
+  }
+  function setCursorFor(p){
+    if(els.tiled.checked || state.editing){ els.canvas.style.cursor = "default"; return; }
+    const h = hitTest(p);
+    els.canvas.style.cursor = h === "rotate" ? "grab" : h === "resize" ? "nwse-resize" : h === "move" ? "move" : "default";
+  }
+  function down(e){
+    if(!state.img || els.tiled.checked || state.editing) return;
+    const p = ptr(e), h = hitTest(p); if(!h) return;
+    e.preventDefault(); state.mode = h; const g = state.geo;
+    if(h === "move"){ const L = toLocal(p, g); state._mdx = L.x; state._mdy = L.y; }
+    else if(h === "resize"){ state.startDist = Math.hypot(p.x - g.cx, p.y - g.cy) || 1; state.startSize = parseFloat(els.size.value); }
+  }
+  function move(e){
+    if(!state.img) return;
+    if(!state.mode){ if(!('ontouchstart' in window)) setCursorFor(ptr(e)); return; }
+    e.preventDefault(); const p = ptr(e), g = state.geo;
+    if(state.mode === "move"){
+      const c = Math.cos(g.angle), s = Math.sin(g.angle);
+      const offX = state._mdx*c - state._mdy*s, offY = state._mdx*s + state._mdy*c;
+      state.posX = clamp((p.x - offX)/els.canvas.width, 0, 1);
+      state.posY = clamp((p.y - offY)/els.canvas.height, 0, 1);
+      markCustom();
+    } else if(state.mode === "rotate"){
+      let deg = Math.atan2(p.y - g.cy, p.x - g.cx)*180/PI + 90;
+      if(deg > 180) deg -= 360; if(deg < -180) deg += 360;
+      els.rotate.value = Math.round(deg); els.rotateVal.textContent = Math.round(deg) + "\u00b0";
+    } else if(state.mode === "resize"){
+      const d = Math.hypot(p.x - g.cx, p.y - g.cy);
+      const ns = clamp(state.startSize*(d/state.startDist), 2, 24);
+      els.size.value = ns.toFixed(1); els.sizeVal.textContent = Math.round(ns) + "%";
+    }
+    render();
+  }
+  function up(){ state.mode = null; }
+  els.canvas.addEventListener("mousedown", down);
+  window.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", up);
+  els.canvas.addEventListener("touchstart", down, { passive:false });
+  window.addEventListener("touchmove", move, { passive:false });
+  window.addEventListener("touchend", up);
+  els.canvas.addEventListener("mousemove", e => { if(!state.mode) setCursorFor(ptr(e)); });
+
+  function markCustom(){ els.posSelect.value = ""; }
+
+  /* ---- inline text editing ---- */
+  function positionEditor(){
+    const g = state.geo; if(!g) return;
+    const r = els.canvas.getBoundingClientRect(), sr = els.stage.getBoundingClientRect();
+    const cssX = g.cx*(r.width/els.canvas.width), cssY = g.cy*(r.height/els.canvas.height);
+    els.inlineEdit.style.left = (r.left - sr.left + cssX) + "px";
+    els.inlineEdit.style.top  = (r.top  - sr.top  + cssY) + "px";
+    els.inlineEdit.style.fontSize = Math.max(13, g.fontPx*(r.width/els.canvas.width)) + "px";
+    els.inlineEdit.style.fontFamily = els.font.value;
+    els.inlineEdit.style.fontWeight = els.weight.value;
+    els.inlineEdit.style.color = els.color.value;
+  }
+  function openEditor(){
+    if(!state.img || els.tiled.checked) return;
+    state.editing = true; render();
+    els.inlineEdit.value = els.wmText.value;
+    els.inlineEdit.rows = Math.max(1, els.wmText.value.split("\n").length);
+    positionEditor(); els.inlineEdit.style.display = "block";
+    els.inlineEdit.focus(); els.inlineEdit.select();
+  }
+  function commitEditor(){
+    if(!state.editing) return;
+    els.wmText.value = els.inlineEdit.value;
+    els.inlineEdit.style.display = "none"; state.editing = false; render();
+  }
+  els.canvas.addEventListener("dblclick", openEditor);
+  let lastTap = 0;
+  els.canvas.addEventListener("touchend", e => {
+    const now = Date.now();
+    if(now - lastTap < 300){ openEditor(); e.preventDefault(); }
+    lastTap = now;
+  });
+  els.inlineEdit.addEventListener("input", () => {
+    els.wmText.value = els.inlineEdit.value;
+    els.inlineEdit.rows = Math.max(1, els.inlineEdit.value.split("\n").length);
+  });
+  els.inlineEdit.addEventListener("blur", commitEditor);
+  els.inlineEdit.addEventListener("keydown", e => {
+    if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); commitEditor(); }
+    if(e.key === "Escape"){ els.inlineEdit.style.display = "none"; state.editing = false; render(); }
+  });
+
+  /* ---- keyboard nudge ---- */
+  window.addEventListener("keydown", e => {
+    if(!state.img || els.tiled.checked || state.editing) return;
+    if(document.activeElement && /TEXTAREA|INPUT|SELECT/.test(document.activeElement.tagName)) return;
+    const step = e.shiftKey ? 0.05 : 0.01; let used = true;
+    if(e.key === "ArrowLeft") state.posX = clamp(state.posX - step, 0, 1);
+    else if(e.key === "ArrowRight") state.posX = clamp(state.posX + step, 0, 1);
+    else if(e.key === "ArrowUp") state.posY = clamp(state.posY - step, 0, 1);
+    else if(e.key === "ArrowDown") state.posY = clamp(state.posY + step, 0, 1);
+    else used = false;
+    if(used){ markCustom(); render(); e.preventDefault(); }
+  });
+
+  /* ---- position presets ---- */
+  function applyPos(v){
+    const m = 0.12, map = { center:[.5,.5], "top-left":[m,m], "top-right":[1-m,m], "bottom-left":[m,1-m], "bottom-right":[1-m,1-m] };
+    if(map[v]){ state.posX = map[v][0]; state.posY = map[v][1]; render(); }
+  }
+  els.posSelect.addEventListener("change", e => applyPos(e.target.value));
+  els.centerBtn.addEventListener("click", () => { els.posSelect.value = "center"; applyPos("center"); });
+
+  /* ---- control bindings ---- */
+  els.size.addEventListener("input", () => { els.sizeVal.textContent = Math.round(parseFloat(els.size.value)) + "%"; render(); });
+  els.rotate.addEventListener("input", () => { els.rotateVal.textContent = els.rotate.value + "\u00b0"; render(); });
+  els.opacity.addEventListener("input", () => { els.opacityVal.textContent = els.opacity.value + "%"; render(); });
+  els.wmText.addEventListener("input", render);
+  els.font.addEventListener("change", render);
+  els.weight.addEventListener("change", render);
+  els.tiled.addEventListener("change", () => {
+    els.stageTip.style.display = els.tiled.checked ? "none" : (state.img ? "block" : "none");
+    if(state.editing) commitEditor(); render();
+  });
+  els.color.addEventListener("input", () => { els.colorHex.value = els.color.value; render(); });
+  els.colorHex.addEventListener("input", () => {
+    if(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(els.colorHex.value)){ els.color.value = els.colorHex.value; render(); }
+  });
+  els.autoDate.addEventListener("change", () => {
+    if(els.autoDate.checked){
+      const re = /\d{1,2}-\d{1,2}-\d{2,4}/;
+      els.wmText.value = re.test(els.wmText.value)
+        ? els.wmText.value.replace(re, todayStr())
+        : (els.wmText.value.trim() + ", " + todayStr());
+      render();
+    }
+  });
+  els.resetBtn.addEventListener("click", () => {
+    els.wmText.value = DEFAULTS.text; els.font.value = DEFAULTS.font; els.weight.value = DEFAULTS.weight;
+    els.size.value = DEFAULTS.size; els.sizeVal.textContent = DEFAULTS.size + "%";
+    els.color.value = DEFAULTS.color; els.colorHex.value = DEFAULTS.color;
+    els.rotate.value = DEFAULTS.rotate; els.rotateVal.textContent = DEFAULTS.rotate + "\u00b0";
+    els.opacity.value = DEFAULTS.opacity; els.opacityVal.textContent = DEFAULTS.opacity + "%";
+    els.tiled.checked = false; els.autoDate.checked = false; els.posSelect.value = "center";
+    state.posX = .5; state.posY = .5;
+    els.stageTip.style.display = state.img ? "block" : "none";
+    render(); toast("Pengaturan direset");
+  });
+
+  /* ---- download (full resolution) ---- */
+  function download(){
+    if(!state.img) return;
+    if(state.editing) commitEditor();
+    const off = document.createElement("canvas");
+    off.width = state.nW; off.height = state.nH;
+    const octx = off.getContext("2d");
+    octx.drawImage(state.img, 0, 0, state.nW, state.nH);
+    if(els.tiled.checked){ drawTiled(octx); } else { drawText(octx, geometry(octx, 1)); }
+    off.toBlob(b => {
+      const u = URL.createObjectURL(b), a = document.createElement("a");
+      a.href = u; a.download = "ktp-watermark.png";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(u), 1000); toast("Gambar diunduh");
+    }, "image/png");
+  }
+  [els.downloadBtn, els.downloadBtn2, els.downloadBtnM].forEach(b => b && b.addEventListener("click", download));
+})();
+</script>
+</body>
+</html>
